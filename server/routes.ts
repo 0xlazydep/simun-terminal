@@ -1,7 +1,7 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { getScannerData, type QuoteFilter } from "./dexscreener";
+import { fetchTokenPairs, getScannerData, type QuoteFilter } from "./dexscreener";
 import { fetchLogoAsset, fetchMarketLogos, fetchMarketPrices } from "./market";
 import { fetchOhlcv, type Interval } from "./geckoterminal";
 import { getErc20Info } from "./onchain";

@@ -13,7 +13,7 @@ declare module "http" {
 
 app.use(
   express.json({
-    verify: (req, _res, buf) => {
+    verify: (req: Request, _res: Response, buf: Buffer) => {
       req.rawBody = buf;
     },
   }),
