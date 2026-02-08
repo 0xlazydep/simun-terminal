@@ -196,8 +196,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     try {
       const query = `
-        query TokenEvents($token: String, $limit: Int) {
-          getTokenEvents(token: $token, limit: $limit) {
+        query TokenEvents($query: String, $limit: Int) {
+          getTokenEvents(query: $query, limit: $limit) {
             events {
               side
               amountUSD
@@ -210,7 +210,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
       `;
-      const variables = { token: `${address}:8453`, limit };
+      const variables = { query: `token:${address}:8453`, limit };
       const resp = await fetch("https://graph.codex.io/graphql", {
         method: "POST",
         headers: {
