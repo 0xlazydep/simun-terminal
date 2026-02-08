@@ -460,8 +460,7 @@ async function fetchClankerTokens(): Promise<DexPair[]> {
     const createdAt = typeof pair.pairCreatedAt === "number" ? pair.pairCreatedAt : null;
     const ageEligible = createdAt ? now - createdAt <= maxAgeMs : true;
 
-    const volumeSpike =
-      volumeChange !== null && volumeChange >= 0.2 && volumeChange <= 0.3;
+    const volumeSpike = volumeChange !== null && volumeChange >= 0.2;
 
     const marketCapSpike =
       marketCap !== null &&
