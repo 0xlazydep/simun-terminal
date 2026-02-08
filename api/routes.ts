@@ -196,7 +196,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
     try {
       const query = `
-        query TokenEvents($query: String, $limit: Int) {
+        query TokenEvents($query: EventsQueryInput!, $limit: Int) {
           getTokenEvents(query: $query, limit: $limit) {
             events {
               side
@@ -210,29 +210,49 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
       `;
-      const variables = { query: `token:${address}`, limit };
-      const resp = await fetch("https://graph.codex.io/graphql", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: apiKey,
-        },
-        body: JSON.stringify({ query, variables }),
-      });
-      const text = await resp.text();
-      if (!resp.ok) {
-        return res.status(502).json({ message: "Upstream error", error: text });
-      }
-      const json = JSON.parse(text) as {
-        data?: { getTokenEvents?: { events?: any[] } };
-        errors?: Array<{ message?: string }>;
+      const tryQuery = async (queryInput: Record<string, any>) => {
+        const variables = { query: queryInput, limit };
+        const resp = await fetch("https://graph.codex.io/graphql", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: apiKey,
+          },
+          body: JSON.stringify({ query, variables }),
+        });
+        const text = await resp.text();
+        if (!resp.ok) {
+          return { ok: false as const, error: text };
+        }
+        const json = JSON.parse(text) as {
+          data?: { getTokenEvents?: { events?: any[] } };
+          errors?: Array<{ message?: string }>;
+        };
+        if (json.errors?.length) {
+          return { ok: false as const, error: json.errors[0]?.message || "Upstream error" };
+        }
+        return { ok: true as const, events: json.data?.getTokenEvents?.events ?? [] };
       };
-      if (json.errors?.length) {
-        return res
-          .status(502)
-          .json({ message: "Upstream error", error: json.errors[0]?.message || "Upstream error" });
+
+      const attempts = [
+        { token: address, network: 8453 },
+        { token: address, networkId: 8453 },
+        { token: address, chainId: 8453 },
+        { token: address, network: "base" },
+        { token: `${address}:8453` },
+        { token: address },
+      ];
+
+      let lastError = "Unknown error";
+      for (const attempt of attempts) {
+        const result = await tryQuery(attempt);
+        if (result.ok) {
+          return res.json({ events: result.events });
+        }
+        lastError = result.error;
       }
-      return res.json({ events: json.data?.getTokenEvents?.events ?? [] });
+
+      return res.status(502).json({ message: "Upstream error", error: lastError });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return res.status(502).json({ message: "Failed to fetch events", error: message });
