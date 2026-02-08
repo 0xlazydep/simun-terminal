@@ -235,8 +235,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       };
 
       const attempts = [
-        { address, network: 8453 },
         { address, networkId: 8453 },
+        { address, network: 8453 },
         { address, chainId: 8453 },
         { address, network: "base" },
         { address: `${address}:8453` },
