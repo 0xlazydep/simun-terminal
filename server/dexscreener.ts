@@ -209,6 +209,12 @@ function parseNumber(value?: string | number | null): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+function normalizePct(value: number | null): number | null {
+  if (value === null) return null;
+  if (value > 1) return value / 100;
+  return value;
+}
+
 function getMarketCap(pair: DexPair): number | null {
   const value = pair.marketCap ?? pair.fdv;
   if (value === undefined || value === null) return null;
@@ -376,11 +382,11 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
     if (!info?.address) continue;
     const symbol = info.symbol || "UNKNOWN";
     const volumeM5 = parseNumber(item.volume5m);
-    const volumeChangeM5 = parseNumber(item.volumeChange5m);
+    const volumeChangeM5 = normalizePct(parseNumber(item.volumeChange5m));
     const volume24 = parseNumber(item.volume24);
     const liquidityUsd = parseNumber(item.liquidity);
     const priceUsd = parseNumber(item.priceUSD);
-    const changeM5 = parseNumber(item.change5m);
+    const changeM5 = normalizePct(parseNumber(item.change5m));
     const marketCap = parseNumber(item.marketCap);
     const holders = parseNumber(item.holders);
     const txnCount5m = parseNumber(item.txnCount5m);
@@ -454,6 +460,14 @@ async function fetchClankerTokens(): Promise<DexPair[]> {
   const now = Date.now();
   const maxAgeMs = 5 * 24 * 60 * 60 * 1000;
   return pairs.map((pair) => {
+    const volumeM5 = pair.volume?.m5;
+    if (typeof volumeM5 === "number") {
+      pushHistory(pair.pairAddress, volumeM5, now);
+      const computedDelta = getFiveMinuteDelta(pair.pairAddress, now);
+      if (computedDelta !== null) {
+        pair.volumeChangeM5Pct = computedDelta;
+      }
+    }
     const volumeChange = pair.volumeChangeM5Pct ?? null;
     const marketCap = typeof pair.marketCap === "number" ? pair.marketCap : null;
     const priceChange = pair.priceChange?.m5 ?? null;
@@ -461,6 +475,7 @@ async function fetchClankerTokens(): Promise<DexPair[]> {
     const ageEligible = createdAt ? now - createdAt <= maxAgeMs : true;
 
     const volumeSpike = volumeChange !== null && volumeChange >= 0.2;
+    const priceSpike = priceChange !== null && priceChange >= 0.2;
 
     const marketCapSpike =
       marketCap !== null &&
@@ -468,7 +483,7 @@ async function fetchClankerTokens(): Promise<DexPair[]> {
       priceChange !== null &&
       priceChange >= 0.3;
 
-    pair.signal = ageEligible && (volumeSpike || marketCapSpike);
+    pair.signal = ageEligible && (volumeSpike || priceSpike || marketCapSpike);
     return pair;
   });
 }
