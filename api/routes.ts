@@ -1,10 +1,10 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "../server/storage";
-import { fetchTokenPairs, getScannerData, type QuoteFilter } from "../server/dexscreener";
-import { fetchLogoAsset, fetchMarketLogos, fetchMarketPrices } from "../server/market";
-import { fetchOhlcv, type Interval } from "../server/geckoterminal";
-import { getErc20Info } from "../server/onchain";
+import { storage } from "../server/storage.js";
+import { fetchTokenPairs, getScannerData, type QuoteFilter } from "../server/dexscreener.js";
+import { fetchLogoAsset, fetchMarketLogos, fetchMarketPrices } from "../server/market.js";
+import { fetchOhlcv, type Interval } from "../server/geckoterminal.js";
+import { getErc20Info } from "../server/onchain.js";
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/ping", (_req, res) => {
