@@ -117,7 +117,13 @@ export function Footer() {
             <Ticker
               key={item.symbol}
               symbol={item.symbol}
-              iconUrl={`/api/market/logo/${item.symbol}`}
+              iconUrl={`/` + (item.symbol === "BTC"
+                ? "bitcoin-btc-logo.png"
+                : item.symbol === "ETH"
+                ? "ethereum-eth-logo.png"
+                : item.symbol === "SOL"
+                ? "solana-sol-logo.png"
+                : "bnb-bnb-logo.png")}
               price={data.price}
               change={data.change}
               color={item.color}
