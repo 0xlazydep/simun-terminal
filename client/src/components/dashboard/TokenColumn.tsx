@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { SciFiCard } from "./SciFiCard";
 import { Copy, ExternalLink, Search } from "lucide-react";
@@ -32,6 +32,26 @@ const getBuySell = (pair: DexPair) => {
   }
   const buyPct = buys / total;
   return { buys, sells, total, buyPct, sellPct: 1 - buyPct };
+};
+
+const playSignalSound = () => {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = 880;
+    gain.gain.value = 0.08;
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+    osc.onended = () => ctx.close();
+  } catch {
+    // ignore audio errors
+  }
 };
 
 function formatCompact(value?: number | string) {
@@ -68,6 +88,7 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const seenSignalRef = useRef<Set<string>>(new Set());
   const { toast } = useToast();
   const [, setLocation] = useLocation();
 
@@ -101,6 +122,23 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    if (quote !== "CLANKER" || !onlySignal) return;
+    const current = pairs.filter((pair) => pair.signal);
+    const currentIds = new Set(current.map((pair) => pair.pairAddress));
+    let hasNew = false;
+    for (const id of currentIds) {
+      if (!seenSignalRef.current.has(id)) {
+        hasNew = true;
+        break;
+      }
+    }
+    if (hasNew) {
+      playSignalSound();
+    }
+    seenSignalRef.current = currentIds;
+  }, [pairs, quote, onlySignal]);
 
   const handleCopy = async (contract: string) => {
     try {
