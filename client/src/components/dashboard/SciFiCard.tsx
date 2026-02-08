@@ -6,9 +6,10 @@ interface SciFiCardProps extends HTMLMotionProps<"div"> {
   title?: string;
   className?: string;
   noPadding?: boolean;
+  contentClassName?: string;
 }
 
-export function SciFiCard({ children, title, className, noPadding = false, ...props }: SciFiCardProps) {
+export function SciFiCard({ children, title, className, noPadding = false, contentClassName, ...props }: SciFiCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -39,7 +40,7 @@ export function SciFiCard({ children, title, className, noPadding = false, ...pr
       )}
 
       {/* Content */}
-      <div className={cn("relative z-10", noPadding ? "" : "p-4")}>
+      <div className={cn("relative z-10", noPadding ? "" : "p-4", contentClassName)}>
         {children}
       </div>
 

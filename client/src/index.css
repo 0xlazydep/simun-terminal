@@ -5,10 +5,19 @@
 
 @custom-variant dark (&:is(.dark *));
 
+@font-face {
+  font-family: "Geist Pixel";
+  src: url("/fonts/geist-pixel/GeistPixelSquare-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme inline {
-  --font-orbitron: "Orbitron", sans-serif;
-  --font-rajdhani: "Rajdhani", sans-serif;
-  --font-mono: "Share Tech Mono", monospace;
+  --font-pixel: "Geist Pixel", "Share Tech Mono", monospace;
+  --font-orbitron: var(--font-pixel);
+  --font-rajdhani: var(--font-pixel);
+  --font-mono: var(--font-pixel);
 
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -44,42 +53,43 @@
 }
 
 :root {
-  /* Pink Cyberpunk Theme */
-  --background: 320 50% 3%; /* Very dark pink/black */
-  --foreground: 320 10% 95%;
+  /* Light Green + Black Theme */
+  --background: 0 0% 0%; /* Pure black */
+  --foreground: 0 0% 100%;
 
-  --card: 320 40% 5%;
-  --card-foreground: 320 10% 95%;
+  --card: 0 0% 0%;
+  --card-foreground: 0 0% 100%;
 
-  --popover: 320 40% 5%;
-  --popover-foreground: 320 10% 95%;
+  --popover: 0 0% 0%;
+  --popover-foreground: 0 0% 100%;
 
-  --primary: 320 100% 50%; /* Neon Pink */
-  --primary-foreground: 320 100% 95%;
+  --primary: 140 90% 55%; /* Neon green */
+  --primary-foreground: 140 100% 95%;
 
-  --secondary: 280 60% 15%; /* Dark Purple */
-  --secondary-foreground: 320 10% 95%;
+  --secondary: 0 0% 0%;
+  --secondary-foreground: 0 0% 100%;
 
-  --muted: 320 30% 15%;
-  --muted-foreground: 320 20% 65%;
+  --muted: 0 0% 0%;
+  --muted-foreground: 0 0% 100%;
 
-  --accent: 320 100% 50%;
-  --accent-foreground: 320 100% 95%;
+  --accent: 140 90% 55%;
+  --accent-foreground: 0 0% 100%;
 
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 98%;
 
-  --border: 320 50% 20%;
-  --input: 320 50% 20%;
-  --ring: 320 100% 50%;
+  --border: 150 35% 22%;
+  --input: 150 35% 22%;
+  --ring: 140 90% 55%;
 
   --radius: 0rem; /* Angular, sharp edges for sci-fi look */
 }
 
 body {
+  font-family: var(--font-pixel);
   background-image: 
-    linear-gradient(rgba(255, 0, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 0, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(rgba(0, 255, 128, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 128, 0.03) 1px, transparent 1px);
   background-size: 40px 40px;
   background-position: center top;
 }
@@ -101,6 +111,15 @@ body::before {
   z-index: 9999;
   pointer-events: none;
   opacity: 0.3;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
 }
 
 .glitch-text {
@@ -131,6 +150,10 @@ body::before {
   animation: glitch-anim2 5s infinite linear alternate-reverse;
 }
 
+.logo-green {
+  filter: hue-rotate(110deg) saturate(1.4) brightness(1.1);
+}
+
 @keyframes glitch-anim {
   0% { clip: rect(35px, 9999px, 12px, 0); }
   20% { clip: rect(66px, 9999px, 89px, 0); }
@@ -147,4 +170,12 @@ body::before {
   60% { clip: rect(75px, 9999px, 12px, 0); }
   80% { clip: rect(9px, 9999px, 54px, 0); }
   100% { clip: rect(64px, 9999px, 31px, 0); }
+}
+
+/* Landing: force green text to white, hover to green */
+.landing [class*="text-primary"] {
+  color: #ffffff !important;
+}
+.landing [class*="text-primary"]:hover {
+  color: hsl(var(--primary)) !important;
 }

@@ -1,43 +1,109 @@
+import { useEffect, useState } from "react";
 import { SciFiCard } from "./SciFiCard";
-import { Activity, Users, Clock, Database } from "lucide-react";
+import { Activity, Database, Layers, Shuffle } from "lucide-react";
+import type { DexPair } from "@/types/dexscreener";
 
-export function TokenInfo() {
+type TokenInfoProps = {
+  pair: DexPair | null;
+};
+
+type OnchainToken = {
+  address: string;
+  name: string;
+  symbol: string;
+  decimals: number;
+  totalSupply: string;
+  totalSupplyFormatted: string;
+};
+
+function formatUsd(value?: number | string) {
+  if (value === undefined || value === null || value === "") return "--";
+  const num = typeof value === "string" ? Number(value) : value;
+  if (!Number.isFinite(num)) return "--";
+  return `$${num.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
+}
+
+function shorten(value?: string) {
+  if (!value) return "--";
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function formatPct(value?: number) {
+  if (value === undefined) return "--";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${value.toFixed(2)}%`;
+}
+
+export function TokenInfo({ pair }: TokenInfoProps) {
+  const [token, setToken] = useState<OnchainToken | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    if (!pair?.baseToken?.address) {
+      setToken(null);
+      return undefined;
+    }
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/base/token/${pair.baseToken.address}`);
+        if (!res.ok) throw new Error("failed");
+        const data = (await res.json()) as OnchainToken;
+        if (active) setToken(data);
+      } catch {
+        if (active) setToken(null);
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+
+    load();
+    return () => {
+      active = false;
+    };
+  }, [pair?.baseToken?.address]);
+
   return (
     <SciFiCard title="ASSET ANALYTICS" className="h-full">
       <div className="grid grid-cols-2 gap-4">
-        <StatItem 
-          label="MARKET CAP" 
-          value="$45,230,000" 
-          icon={<Database className="w-4 h-4" />} 
-          change="+5.2%"
+        <StatItem
+          label="TOKEN"
+          value={token?.symbol || pair?.baseToken?.symbol || "--"}
+          icon={<Database className="w-4 h-4" />}
+          sub={token?.name || pair?.baseToken?.name || shorten(pair?.baseToken?.address)}
         />
-        <StatItem 
-          label="24H VOLUME" 
-          value="$1,200,450" 
-          icon={<Activity className="w-4 h-4" />} 
-          change="+12.8%"
+        <StatItem
+          label="PRICE (USD)"
+          value={formatUsd(pair?.priceUsd)}
+          icon={<Activity className="w-4 h-4" />}
+          change={formatPct(pair?.priceChange?.h24)}
         />
-        <StatItem 
-          label="HOLDERS" 
-          value="12,450" 
-          icon={<Users className="w-4 h-4" />} 
-          change="+142"
+        <StatItem
+          label="LIQUIDITY"
+          value={formatUsd(pair?.liquidity?.usd)}
+          icon={<Layers className="w-4 h-4" />}
+          sub={`VOL 24H: ${formatUsd(pair?.volume?.h24)}`}
         />
-        <StatItem 
-          label="TOKEN AGE" 
-          value="142 Days" 
-          icon={<Clock className="w-4 h-4" />} 
-          sub="Created: 2024-09-12"
+        <StatItem
+          label="SUPPLY"
+          value={token?.totalSupplyFormatted || "--"}
+          icon={<Shuffle className="w-4 h-4" />}
+          sub={`Decimals: ${token?.decimals ?? "--"}`}
         />
       </div>
 
-      <div className="mt-6 border-t border-primary/20 pt-4">
-        <h4 className="font-orbitron text-xs text-primary/70 mb-2">SECURITY SCAN</h4>
-        <div className="space-y-2">
-          <SecurityBar label="CONTRACT RENNOUNCED" value={100} />
-          <SecurityBar label="LIQUIDITY LOCKED" value={98} />
-          <SecurityBar label="CODE AUDIT" value={85} />
+      <div className="mt-4 border-t border-primary/20 pt-3">
+        <div className="grid grid-cols-2 gap-3 text-[10px] font-mono text-primary/60">
+          <InfoRow label="BASE" value={shorten(pair?.baseToken?.address)} />
+          <InfoRow label="QUOTE" value={shorten(pair?.quoteToken?.address)} />
+          <InfoRow label="PAIR" value={shorten(pair?.pairAddress)} />
+          <InfoRow label="DEX" value={pair?.dexId ?? "--"} />
         </div>
+        {loading && (
+          <div className="mt-2 text-[10px] font-mono text-primary/40">Fetching on-chain data...</div>
+        )}
       </div>
     </SciFiCard>
   );
@@ -50,24 +116,18 @@ function StatItem({ label, value, icon, change, sub }: any) {
         <span className="text-[10px] font-orbitron">{label}</span>
         {icon}
       </div>
-      <div className="font-mono text-xl text-white tracking-wider">{value}</div>
-      {change && <div className="text-[10px] font-mono text-green-400 mt-1">{change}</div>}
-      {sub && <div className="text-[10px] font-mono text-primary/40 mt-1">{sub}</div>}
+      <div className="font-mono text-xl text-white tracking-wider truncate">{value}</div>
+      {change && <div className="text-[10px] font-mono text-white mt-1">{change}</div>}
+      {sub && <div className="text-[10px] font-mono text-primary/40 mt-1 truncate">{sub}</div>}
     </div>
   );
 }
 
-function SecurityBar({ label, value }: { label: string, value: number }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center gap-2 text-[10px] font-mono">
-      <div className="w-24 text-primary/60">{label}</div>
-      <div className="flex-1 h-2 bg-primary/10 border border-primary/20 relative overflow-hidden">
-        <div 
-          className="absolute top-0 left-0 h-full bg-primary/60" 
-          style={{ width: `${value}%` }}
-        />
-      </div>
-      <div className="w-8 text-right text-primary">{value}%</div>
+    <div className="flex items-center justify-between gap-2">
+      <span>{label}</span>
+      <span className="text-primary/80">{value}</span>
     </div>
   );
 }
