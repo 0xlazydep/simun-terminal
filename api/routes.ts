@@ -243,16 +243,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { address },
       ];
 
-      let firstError = "Unknown error";
+      let lastError: string | null = null;
       for (const attempt of attempts) {
         const result = await tryQuery(attempt);
         if (result.ok) {
           return res.json({ events: result.events });
         }
-        if (!firstError) firstError = result.error;
+        lastError = result.error;
       }
 
-      return res.status(502).json({ message: "Upstream error", error: firstError });
+      return res.status(502).json({ message: "Upstream error", error: lastError ?? "Unknown error" });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return res.status(502).json({ message: "Failed to fetch events", error: message });
