@@ -241,24 +241,18 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         { address, network: "base" },
         { address: `${address}:8453` },
         { address },
-        { token: address, network: 8453 },
-        { token: address, networkId: 8453 },
-        { token: address, chainId: 8453 },
-        { token: address, network: "base" },
-        { token: `${address}:8453` },
-        { token: address },
       ];
 
-      let lastError = "Unknown error";
+      let firstError = "Unknown error";
       for (const attempt of attempts) {
         const result = await tryQuery(attempt);
         if (result.ok) {
           return res.json({ events: result.events });
         }
-        lastError = result.error;
+        if (!firstError) firstError = result.error;
       }
 
-      return res.status(502).json({ message: "Upstream error", error: lastError });
+      return res.status(502).json({ message: "Upstream error", error: firstError });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return res.status(502).json({ message: "Failed to fetch events", error: message });
