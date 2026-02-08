@@ -210,7 +210,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           }
         }
       `;
-      const variables = { query: `token:${address}:8453`, limit };
+      const variables = { query: `token:${address}`, limit };
       const resp = await fetch("https://graph.codex.io/graphql", {
         method: "POST",
         headers: {
