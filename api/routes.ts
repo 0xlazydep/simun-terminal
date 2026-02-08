@@ -236,11 +236,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
       const attempts = [
         { address, networkId: 8453 },
-        { address, network: 8453 },
-        { address, chainId: 8453 },
-        { address, network: "base" },
-        { address: `${address}:8453` },
-        { address },
+        { address, networkId: Number(process.env.CHAIN_ID || 8453) },
+        { address, networkId: 8453, chainId: 8453 },
+        { address, networkId: 8453, network: "base" },
       ];
 
       let lastError: string | null = null;
