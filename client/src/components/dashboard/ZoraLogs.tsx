@@ -17,6 +17,11 @@ const formatAge = (from: number, now: number) => {
   return `${minutes}m ${seconds.toString().padStart(2, "0")}s ago`;
 };
 const shorten = (value: string) => `${value.slice(0, 6)}...${value.slice(-4)}`;
+const shortenName = (value?: string) => {
+  if (!value) return "";
+  if (value.length <= 8) return value;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
 const zoraUrl = (address: string) => `https://zora.co/coin/base:${address}`;
 const toMs = (value?: number | null) => {
   if (!value) return null;
@@ -148,10 +153,13 @@ export function ZoraLogs({ onSelect }: ZoraLogsProps) {
                       <div className="flex items-center gap-2">
                         <div className="flex items-baseline gap-2 min-w-0">
                           <span className="font-orbitron text-sm text-primary group-hover:text-white transition-colors truncate">
-                            {pair.baseToken.name || pair.baseToken.symbol}
+                            {shortenName(pair.baseToken.name) || pair.baseToken.symbol}
                           </span>
                           <span className="text-[10px] font-mono text-primary/70 whitespace-nowrap">
                             ${pair.baseToken.symbol}
+                          </span>
+                          <span className="text-[9px] font-mono text-primary/50 whitespace-nowrap">
+                            {shorten(pair.baseToken.address)}
                           </span>
                         </div>
                         {toMs(pair.pairCreatedAt) && (
@@ -161,7 +169,6 @@ export function ZoraLogs({ onSelect }: ZoraLogsProps) {
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-[10px] font-mono text-primary/50 truncate">
-                        <span>{shorten(pair.baseToken.address)}</span>
                         <button
                           type="button"
                           onClick={(event) => {

@@ -16,6 +16,11 @@ const gradients = [
 ];
 
 const shorten = (value: string) => `${value.slice(0, 6)}...${value.slice(-4)}`;
+const shortenName = (value?: string) => {
+  if (!value) return "";
+  if (value.length <= 8) return value;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
 const formatTime = (value: number) =>
   new Date(value).toLocaleTimeString("en-US", {
     hour: "numeric",
@@ -219,10 +224,13 @@ export function TokenList({ selectedPairAddress, onSelect }: TokenListProps) {
                       <div className="flex items-center gap-2">
                         <div className="flex items-baseline gap-2 min-w-0">
                           <span className="font-orbitron text-sm text-primary group-hover:text-white transition-colors truncate">
-                            {pair.baseToken.name || pair.baseToken.symbol}
+                            {shortenName(pair.baseToken.name) || pair.baseToken.symbol}
                           </span>
                           <span className="text-[10px] font-mono text-primary/70 whitespace-nowrap">
                             ${pair.baseToken.symbol}
+                          </span>
+                          <span className="text-[9px] font-mono text-primary/50 whitespace-nowrap">
+                            {shorten(pair.baseToken.address)}
                           </span>
                         </div>
                         {deltaText && (
@@ -237,7 +245,6 @@ export function TokenList({ selectedPairAddress, onSelect }: TokenListProps) {
                         )}
                       </div>
                       <div className="flex items-center gap-2 text-[10px] font-mono text-primary/50 truncate">
-                        <span>{shorten(pair.baseToken.address)}</span>
                         <button
                           type="button"
                           onClick={(event) => {

@@ -6,6 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 import type { DexPair, ScannerResponse } from "@/types/dexscreener";
 
 const shorten = (value: string) => `${value.slice(0, 6)}...${value.slice(-4)}`;
+const shortenName = (value?: string) => {
+  if (!value) return "";
+  if (value.length <= 8) return value;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+};
 const zoraUrl = (address: string) => `https://zora.co/coin/base:${address}`;
 const buyUrl = (address: string) =>
   `https://t.me/based_eth_bot?start=r_ursecretwhale_${address}`;
@@ -190,7 +195,7 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
                     className="group cursor-pointer border-b border-primary/20 bg-primary/5 hover:bg-primary/10 transition-colors px-2 py-2"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="h-11 w-11 rounded-md border border-primary/30 bg-background/50 flex items-center justify-center overflow-hidden">
+                      <div className="h-16 w-16 rounded-md border border-primary/30 bg-background/50 flex items-center justify-center overflow-hidden">
                         {pair.baseToken.imageUrl ? (
                           <img
                             src={pair.baseToken.imageUrl}
@@ -210,19 +215,19 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
                           <div className="min-w-0">
                             <div className="flex items-baseline gap-2 min-w-0">
                               <span className="font-orbitron text-sm text-primary group-hover:text-white transition-colors truncate">
-                                {pair.baseToken.name || pair.baseToken.symbol}
+                                {shortenName(pair.baseToken.name) || pair.baseToken.symbol}
                               </span>
                               <span className="text-[10px] font-mono text-primary/70 whitespace-nowrap">
                                 ${pair.baseToken.symbol}
+                              </span>
+                              <span className="text-[9px] font-mono text-primary/50 whitespace-nowrap">
+                                {shorten(pair.baseToken.address)}
                               </span>
                               {pair.signal && (
                                 <span className="text-[9px] font-mono px-1.5 py-0.5 border border-white/60 text-white">
                                   SIGNAL
                                 </span>
                               )}
-                            </div>
-                            <div className="mt-0.5 text-[9px] font-mono text-primary/50 truncate">
-                              {shorten(pair.baseToken.address)}
                             </div>
                           </div>
                           <span className="text-[9px] font-mono text-primary/60 whitespace-nowrap">
