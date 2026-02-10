@@ -93,6 +93,8 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [sortLastTxn, setSortLastTxn] = useState(false);
+  const [buyOnly, setBuyOnly] = useState(false);
   const seenSignalRef = useRef<Set<string>>(new Set());
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -103,7 +105,15 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`/api/defined/scan?quote=${quote}`);
+        const params = new URLSearchParams({ quote });
+        if (sortLastTxn) {
+          params.set("sort", "lastTransaction");
+          params.set("window", "day1");
+        }
+        if (buyOnly) {
+          params.set("buyOnly", "1");
+        }
+        const res = await fetch(`/api/defined/scan?${params.toString()}`);
         if (!res.ok) throw new Error("Failed");
         const data = (await res.json()) as ScannerResponse;
         if (!active) return;
@@ -121,7 +131,7 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
       active = false;
       window.clearInterval(interval);
     };
-  }, [quote]);
+  }, [quote, sortLastTxn, buyOnly]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -161,9 +171,24 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
   };
 
   const items = useMemo(() => {
-    const filtered = onlySignal ? pairs.filter((pair) => pair.signal) : pairs;
+    let filtered = onlySignal ? pairs.filter((pair) => pair.signal) : pairs;
+    if (buyOnly) {
+      filtered = filtered.filter((pair) => {
+        const buys = pair.txns?.m5?.buys ?? 0;
+        const sells = pair.txns?.m5?.sells ?? 0;
+        return buys > 0 && sells <= 0;
+      });
+    }
+    if (sortLastTxn) {
+      filtered = [...filtered].sort((a, b) => {
+        const aTs = a.lastTransactionAt ?? 0;
+        const bTs = b.lastTransactionAt ?? 0;
+        if (bTs !== aTs) return bTs - aTs;
+        return (b.pairCreatedAt ?? 0) - (a.pairCreatedAt ?? 0);
+      });
+    }
     return filtered.slice(0, 50);
-  }, [pairs, onlySignal]);
+  }, [pairs, onlySignal, buyOnly, sortLastTxn]);
 
   return (
     <SciFiCard
@@ -181,6 +206,34 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
             {loading ? "SCANNING..." : error ? "OFFLINE" : "LIVE"}
           </div>
         </div>
+        {(quote === "ZORA") && (
+          <div className="flex items-center gap-2 px-2 pb-2 border-b border-primary/10">
+            <button
+              type="button"
+              onClick={() => setSortLastTxn((prev) => !prev)}
+              className={
+                "text-[9px] font-mono px-2 py-0.5 border transition-colors " +
+                (sortLastTxn
+                  ? "border-primary text-primary"
+                  : "border-primary/30 text-primary/60 hover:border-primary/60")
+              }
+            >
+              LAST TXN 24H
+            </button>
+            <button
+              type="button"
+              onClick={() => setBuyOnly((prev) => !prev)}
+              className={
+                "text-[9px] font-mono px-2 py-0.5 border transition-colors " +
+                (buyOnly
+                  ? "border-primary text-primary"
+                  : "border-primary/30 text-primary/60 hover:border-primary/60")
+              }
+            >
+              BUY ONLY
+            </button>
+          </div>
+        )}
 
         <div className="flex-1 min-h-0 overflow-y-auto pr-0 no-scrollbar overscroll-contain">
           <div className="space-y-0">
@@ -215,10 +268,8 @@ export function TokenColumn({ title, quote, onlySignal = false }: TokenColumnPro
                           <div className="min-w-0">
                             <div className="flex items-baseline gap-2 min-w-0">
                               <span className="font-orbitron text-sm text-primary group-hover:text-white transition-colors truncate">
-                                {shortenName(pair.baseToken.name) || pair.baseToken.symbol}
-                              </span>
-                              <span className="text-[10px] font-mono text-primary/70 whitespace-nowrap">
-                                ${pair.baseToken.symbol}
+                                {shortenName(pair.baseToken.name) || pair.baseToken.symbol},{" "}
+                                <span className="text-primary/70">${pair.baseToken.symbol}</span>
                               </span>
                               <span className="text-[9px] font-mono text-primary/50 whitespace-nowrap">
                                 {shorten(pair.baseToken.address)}

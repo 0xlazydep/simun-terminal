@@ -1,10 +1,16 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "../server/storage.js";
-import { fetchTokenPairs, getScannerData, type QuoteFilter } from "../server/dexscreener.js";
+import { fetchTokenPairs, getScannerData, type QuoteFilter, type ScanOptions } from "../server/dexscreener.js";
 import { fetchLogoAsset, fetchMarketLogos, fetchMarketPrices } from "../server/market.js";
 import { fetchOhlcv, type Interval } from "../server/geckoterminal.js";
 import { getErc20Info } from "../server/onchain.js";
+
+const authHeader = (value: string) => {
+  if (value.startsWith("Bearer ")) return value;
+  if (process.env.CODEX_AUTH_BEARER === "1") return `Bearer ${value}`;
+  return value;
+};
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
   app.get("/api/ping", (_req, res) => {
@@ -17,8 +23,16 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (quote !== "CLANKER" && quote !== "ZORA" && quote !== "PRINTR") {
       return res.status(400).json({ message: "Invalid quote filter" });
     }
+    const sortRaw = req.query.sort ? String(req.query.sort) : undefined;
+    const windowRaw = req.query.window ? String(req.query.window) : undefined;
+    const buyOnly = req.query.buyOnly === "1" || req.query.buyOnly === "true";
+    const options: ScanOptions = {
+      sort: sortRaw === "lastTransaction" ? "lastTransaction" : undefined,
+      window: windowRaw === "day1" ? "day1" : undefined,
+      buyOnly,
+    };
     try {
-      const data = await getScannerData(quote);
+      const data = await getScannerData(quote, options);
       return res.json(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -152,7 +166,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: apiKey,
+            Authorization: authHeader(apiKey),
           },
           body: JSON.stringify({ query, variables }),
         });
@@ -214,10 +228,10 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         const variables = { query: queryInput, limit };
         const resp = await fetch("https://graph.codex.io/graphql", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: apiKey,
-          },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader(apiKey),
+        },
           body: JSON.stringify({ query, variables }),
         });
         const text = await resp.text();

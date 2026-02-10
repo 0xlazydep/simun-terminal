@@ -7,6 +7,11 @@ const ZORA_LAUNCHPADS = ["Zora"];
 const CLANKER_LAUNCHPADS = ["Clanker V4"];
 const PRINTR_LAUNCHPADS = ["Printr"];
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const authHeader = (value: string) => {
+  if (value.startsWith("Bearer ")) return value;
+  if (process.env.CODEX_AUTH_BEARER === "1") return `Bearer ${value}`;
+  return value;
+};
 
 const WETH_ADDRESS =
   process.env.CLANKER_QUOTE_ADDRESS || "0x4200000000000000000000000000000000000006";
@@ -58,6 +63,7 @@ type DexPair = {
 
 type CodexTokenResult = {
   createdAt?: number | null;
+  lastTransaction?: number | null;
   volume5m?: string | null;
   volumeChange5m?: string | null;
   volume24?: string | null;
@@ -121,7 +127,7 @@ const HISTORY_RETENTION = 10 * 60 * 1000;
 const CACHE_TTL = 3 * 1000;
 const MIN_VOLUME_SPIKE = 0.3;
 const MAX_MARKET_CAP = 100000;
-const MAX_SCAN_RESULTS = 200;
+const MAX_SCAN_RESULTS = 1000;
 const MAX_RESULTS = 50;
 
 function mergeSeen(quote: QuoteFilter, pairs: DexPair[]) {
@@ -299,7 +305,11 @@ export async function fetchTokenPairs(address: string, quote?: QuoteFilter): Pro
   return pairs.slice(0, MAX_RESULTS);
 }
 
-async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Promise<DexPair[]> {
+async function fetchDefinedTokens(
+  launchpads: string[],
+  quoteSymbol: string,
+  options: ScanOptions = {},
+): Promise<DexPair[]> {
   const apiKey = process.env.DEFINED_API_KEY || process.env.CODEX_API_KEY;
   if (!apiKey) {
     throw new Error("Missing DEFINED_API_KEY (or CODEX_API_KEY)");
@@ -310,6 +320,7 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
       filterTokens(filters: $filters, rankings: $rankings, limit: $limit) {
         results {
           createdAt
+          lastTransaction
           volume5m
           volumeChange5m
           volume24
@@ -341,17 +352,31 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
     }
   `;
 
-  const variables = {
-    filters: {
-      network: [BASE_NETWORK_ID],
-      launchpadName: launchpads,
+  const filters: Record<string, any> = {
+    network: [BASE_NETWORK_ID],
+    launchpadName: launchpads,
+  };
+
+  if (options.window === "day1") {
+    const since = Math.floor(Date.now() / 1000) - 24 * 60 * 60;
+    filters.lastTransaction = { gte: since };
+  }
+
+  if (options.buyOnly) {
+    filters.buyCount5m = { gte: 1 };
+    filters.sellCount5m = { lte: 0 };
+  }
+
+  const rankings = [
+    {
+      attribute: options.sort === "lastTransaction" ? "lastTransaction" : "createdAt",
+      direction: "DESC",
     },
-    rankings: [
-      {
-        attribute: "createdAt",
-        direction: "DESC",
-      },
-    ],
+  ];
+
+  const variables = {
+    filters,
+    rankings,
     limit: MAX_SCAN_RESULTS,
   };
 
@@ -359,7 +384,7 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: apiKey,
+      Authorization: authHeader(apiKey),
     },
     body: JSON.stringify({ query, variables }),
   });
@@ -394,6 +419,7 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
     const buyCount5m = parseNumber(item.buyCount5m);
     const sellCount5m = parseNumber(item.sellCount5m);
     const createdAt = item.createdAt ?? item.token?.createdAt ?? undefined;
+    const lastTransaction = item.lastTransaction ?? undefined;
     const pairAddress = item.pair?.address ?? undefined;
 
     pairs.push({
@@ -445,18 +471,26 @@ async function fetchDefinedTokens(launchpads: string[], quoteSymbol: string): Pr
           : undefined,
       volumeChangeM5Pct: volumeChangeM5,
       pairCreatedAt: createdAt ?? undefined,
+      lastTransactionAt: lastTransaction ?? undefined,
     });
   }
 
   return pairs;
 }
 
-async function fetchZoraTokens(): Promise<DexPair[]> {
-  return fetchDefinedTokens(ZORA_LAUNCHPADS, "ZORA");
+async function fetchZoraTokens(options: ScanOptions): Promise<DexPair[]> {
+  const pairs = await fetchDefinedTokens(ZORA_LAUNCHPADS, "ZORA", options);
+  if (!options.sort && !options.buyOnly) {
+    return pairs;
+  }
+  return pairs.filter((pair) => {
+    const marketCap = typeof pair.marketCap === "number" ? pair.marketCap : null;
+    return marketCap !== null && marketCap <= 3_000;
+  });
 }
 
-async function fetchClankerTokens(): Promise<DexPair[]> {
-  const pairs = await fetchDefinedTokens(CLANKER_LAUNCHPADS, "USD");
+async function fetchClankerTokens(options: ScanOptions): Promise<DexPair[]> {
+  const pairs = await fetchDefinedTokens(CLANKER_LAUNCHPADS, "USD", options);
   const now = Date.now();
   const maxAgeMs = 5 * 24 * 60 * 60 * 1000;
   return pairs.map((pair) => {
@@ -492,15 +526,24 @@ async function fetchPrintrTokens(): Promise<DexPair[]> {
   return fetchDefinedTokens(PRINTR_LAUNCHPADS, "USD");
 }
 
-export async function getScannerData(quote: QuoteFilter): Promise<ScannerResponse> {
+export type ScanOptions = {
+  sort?: "createdAt" | "lastTransaction";
+  window?: "day1";
+  buyOnly?: boolean;
+};
+
+export async function getScannerData(
+  quote: QuoteFilter,
+  options: ScanOptions = {},
+): Promise<ScannerResponse> {
   const cached = cache.get(quote);
   const now = Date.now();
-  if (cached && now - cached.ts < CACHE_TTL) {
+  if (cached && now - cached.ts < CACHE_TTL && !options.sort && !options.window && !options.buyOnly) {
     return cached.data;
   }
 
   if (quote === "ZORA") {
-    const pairs = await fetchZoraTokens();
+    const pairs = await fetchZoraTokens(options);
     const data: ScannerResponse = {
       quote,
       pairs: mergeSeen(quote, pairs),
@@ -512,7 +555,7 @@ export async function getScannerData(quote: QuoteFilter): Promise<ScannerRespons
   }
 
   if (quote === "CLANKER") {
-    const pairs = await fetchClankerTokens();
+    const pairs = await fetchClankerTokens(options);
     const data: ScannerResponse = {
       quote,
       pairs: mergeSeen(quote, pairs),

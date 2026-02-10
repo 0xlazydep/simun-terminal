@@ -224,10 +224,8 @@ export function TokenList({ selectedPairAddress, onSelect }: TokenListProps) {
                       <div className="flex items-center gap-2">
                         <div className="flex items-baseline gap-2 min-w-0">
                           <span className="font-orbitron text-sm text-primary group-hover:text-white transition-colors truncate">
-                            {shortenName(pair.baseToken.name) || pair.baseToken.symbol}
-                          </span>
-                          <span className="text-[10px] font-mono text-primary/70 whitespace-nowrap">
-                            ${pair.baseToken.symbol}
+                            {shortenName(pair.baseToken.name) || pair.baseToken.symbol},{" "}
+                            <span className="text-primary/70">${pair.baseToken.symbol}</span>
                           </span>
                           <span className="text-[9px] font-mono text-primary/50 whitespace-nowrap">
                             {shorten(pair.baseToken.address)}

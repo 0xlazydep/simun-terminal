@@ -1,10 +1,16 @@
 import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { fetchTokenPairs, getScannerData, type QuoteFilter } from "./dexscreener";
+import { fetchTokenPairs, getScannerData, type QuoteFilter, type ScanOptions } from "./dexscreener";
 import { fetchLogoAsset, fetchMarketLogos, fetchMarketPrices } from "./market";
 import { fetchOhlcv, type Interval } from "./geckoterminal";
 import { getErc20Info } from "./onchain";
+
+const authHeader = (value: string) => {
+  if (value.startsWith("Bearer ")) return value;
+  if (process.env.CODEX_AUTH_BEARER === "1") return `Bearer ${value}`;
+  return value;
+};
 
 export async function registerRoutes(
   httpServer: Server,
@@ -25,8 +31,16 @@ export async function registerRoutes(
     if (quote !== "CLANKER" && quote !== "ZORA" && quote !== "PRINTR") {
       return res.status(400).json({ message: "Invalid quote filter" });
     }
+    const sortRaw = req.query.sort ? String(req.query.sort) : undefined;
+    const windowRaw = req.query.window ? String(req.query.window) : undefined;
+    const buyOnly = req.query.buyOnly === "1" || req.query.buyOnly === "true";
+    const options: ScanOptions = {
+      sort: sortRaw === "lastTransaction" ? "lastTransaction" : undefined,
+      window: windowRaw === "day1" ? "day1" : undefined,
+      buyOnly,
+    };
     try {
-      const data = await getScannerData(quote);
+      const data = await getScannerData(quote, options);
       return res.json(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -160,7 +174,7 @@ export async function registerRoutes(
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: apiKey,
+            Authorization: authHeader(apiKey),
           },
           body: JSON.stringify({ query, variables }),
         });
@@ -234,7 +248,7 @@ export async function registerRoutes(
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: apiKey,
+          Authorization: authHeader(apiKey),
         },
         body: JSON.stringify({ query, variables }),
       });

@@ -43,6 +43,7 @@ export type DexPair = {
     h24?: number;
   };
   pairCreatedAt?: number;
+  lastTransactionAt?: number;
   volumeChangeM5Pct?: number | null;
 };
 
