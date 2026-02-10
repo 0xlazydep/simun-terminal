@@ -42,7 +42,22 @@ export default function TokenPage() {
     buyCount5m?: number;
     sellCount5m?: number;
     change5m?: number;
+    liquidity?: number;
+    holders?: number;
+    totalSupply?: number;
+    createdAt?: number;
+    poolCreatedAt?: number;
+    devAddress?: string;
     token?: { info?: { name?: string; symbol?: string } };
+    audit?: {
+      verified?: boolean;
+      noHoneypot?: boolean;
+      renounced?: boolean;
+      noBlacklist?: boolean;
+      buyTax?: number;
+      sellTax?: number;
+      score?: number;
+    };
   } | null>(null);
   const { address: walletAddress } = useWallet();
   const [amount, setAmount] = useState("");
@@ -85,6 +100,24 @@ export default function TokenPage() {
   const [zoomSignal, setZoomSignal] = useState(0);
   const [resetSignal, setResetSignal] = useState(0);
   const [toolbarOpen, setToolbarOpen] = useState(false);
+  const shortAddress = useMemo(() => {
+    if (!address) return "--";
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  }, [address]);
+  type TradeRow = {
+    id: string;
+    ageSeconds: number;
+    type: "BUY" | "SELL";
+    marketCap?: number;
+    amount?: number;
+    totalEth?: number;
+    trader?: string;
+    priceUsd?: number;
+    tracked?: boolean;
+  };
+  const [trades, setTrades] = useState<TradeRow[]>([]);
+  const [tradesLoading, setTradesLoading] = useState(false);
+  const [tradeFilter, setTradeFilter] = useState<"ALL" | "BUY" | "SELL">("ALL");
 
   const formatPrice = (value?: number) => {
     if (value == null || Number.isNaN(value)) return "--";
@@ -99,6 +132,17 @@ export default function TokenPage() {
     if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
     if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
     return value.toFixed(2);
+  };
+
+  const formatAge = (seconds: number) => {
+    if (!Number.isFinite(seconds) || seconds < 0) return "--";
+    if (seconds < 60) return `${Math.floor(seconds)}s`;
+    const mins = Math.floor(seconds / 60);
+    if (mins < 60) return `${mins}m`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    const days = Math.floor(hours / 24);
+    return `${days}d`;
   };
 
   useEffect(() => {
@@ -123,6 +167,51 @@ export default function TokenPage() {
       };
     }
     return undefined;
+  }, [address]);
+
+  useEffect(() => {
+    if (!address) return;
+    let active = true;
+    const loadTrades = async () => {
+      setTradesLoading(true);
+      try {
+        const res = await fetch(`/api/defined/token-events?address=${address}&limit=30`);
+        if (!res.ok) throw new Error("Failed to fetch trades");
+        const json = (await res.json()) as any;
+        const events = json?.data?.events ?? json?.events ?? [];
+        const now = Date.now();
+        const mapped: TradeRow[] = Array.isArray(events)
+          ? events.map((event: any, index: number) => {
+              const ts = event.timestamp ?? event.time ?? event.createdAt ?? now;
+              const ageSeconds = Math.max(0, Math.floor((now - Number(ts)) / 1000));
+              const sideRaw = `${event.side ?? event.type ?? event.action ?? ""}`.toUpperCase();
+              const type = sideRaw.includes("SELL") ? "SELL" : "BUY";
+              return {
+                id: event.id ?? event.txHash ?? `${index}-${ts}`,
+                ageSeconds,
+                type,
+                marketCap: event.marketCap ?? event.mc,
+                amount: event.amount ?? event.tokenAmount,
+                totalEth: event.totalEth ?? event.ethAmount ?? event.quoteAmount,
+                trader: event.trader ?? event.maker ?? event.wallet,
+                priceUsd: event.priceUsd ?? event.price,
+                tracked: event.tracked ?? event.watch,
+              };
+            })
+          : [];
+        if (active) setTrades(mapped);
+      } catch {
+        if (active) setTrades([]);
+      } finally {
+        if (active) setTradesLoading(false);
+      }
+    };
+    loadTrades();
+    const interval = setInterval(loadTrades, 8000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
   }, [address]);
 
 
@@ -155,7 +244,8 @@ export default function TokenPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch panel-rise delay-2">
-          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[240px] sm:min-h-[300px] md:min-h-[360px] dex-embed flex flex-col">
+          <div className="flex flex-col gap-4">
+            <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[240px] sm:min-h-[300px] md:min-h-[360px] dex-embed flex flex-col">
             <div className="relative flex-1 min-h-[260px] sm:min-h-[320px] md:min-h-[380px] pb-12">
               <div className="absolute left-0 right-0 top-0 bottom-12">
                 <CodexChart
@@ -349,6 +439,67 @@ export default function TokenPage() {
                 </div>
               </div>
             </div>
+            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Recent Trades</div>
+                <div className="flex items-center gap-2 text-[9px] font-mono">
+                  {(["ALL", "BUY", "SELL"] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      type="button"
+                      onClick={() => setTradeFilter(filter)}
+                      className={`border px-2 py-1 uppercase tracking-wider ${
+                        tradeFilter === filter
+                          ? "border-primary text-primary bg-primary/10"
+                          : "border-primary/20 text-primary/60 hover:text-primary"
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-[60px_60px_1fr_1fr_1fr_1fr_90px_70px] gap-2 text-[9px] font-mono text-primary/50 uppercase tracking-wider">
+                <span>Age</span>
+                <span>Type</span>
+                <span>MC</span>
+                <span>Amount</span>
+                <span>Total ETH</span>
+                <span>Trader</span>
+                <span>Price</span>
+                <span>Track</span>
+              </div>
+
+              <div className="flex flex-col gap-2 max-h-[260px] overflow-y-auto no-scrollbar">
+                {tradesLoading && (
+                  <div className="text-[10px] font-mono text-primary/40">Loading trades...</div>
+                )}
+                {!tradesLoading &&
+                  (tradeFilter === "ALL" ? trades : trades.filter((t) => t.type === tradeFilter)).map((trade) => (
+                    <div
+                      key={trade.id}
+                      className="grid grid-cols-[60px_60px_1fr_1fr_1fr_1fr_90px_70px] gap-2 text-[10px] font-mono text-primary/70"
+                    >
+                      <span>{formatAge(trade.ageSeconds)}</span>
+                      <span className={trade.type === "BUY" ? "text-primary" : "text-red-400"}>
+                        {trade.type}
+                      </span>
+                      <span>{trade.marketCap != null ? `$${trade.marketCap.toLocaleString()}` : "--"}</span>
+                      <span>{trade.amount != null ? trade.amount.toLocaleString() : "--"}</span>
+                      <span>{trade.totalEth != null ? trade.totalEth.toFixed(4) : "--"}</span>
+                      <span>
+                        {trade.trader ? `${trade.trader.slice(0, 6)}...${trade.trader.slice(-4)}` : "--"}
+                      </span>
+                      <span>{trade.priceUsd != null ? `$${trade.priceUsd.toFixed(8)}` : "--"}</span>
+                      <span>{trade.tracked == null ? "--" : trade.tracked ? "ON" : "OFF"}</span>
+                    </div>
+                  ))}
+                {!tradesLoading && trades.length === 0 && (
+                  <div className="text-[10px] font-mono text-primary/40">No trade data yet.</div>
+                )}
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 lg:h-full">
@@ -433,6 +584,77 @@ export default function TokenPage() {
               </div>
               <div className="text-[9px] font-mono text-primary/40">
                 Configure slippage and gas manually. Trades execute via your connected wallet.
+              </div>
+            </div>
+
+            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+              <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Token Info</div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Total Liquidity</span>
+                <span className="text-white">{stats?.liquidity ? `$${stats.liquidity.toLocaleString()}` : "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Pair</span>
+                <span className="text-white">{shortAddress}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Dev</span>
+                <span className="text-white">
+                  {stats?.devAddress
+                    ? `${stats.devAddress.slice(0, 6)}...${stats.devAddress.slice(-4)}`
+                    : "--"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Token Value</span>
+                <span className="text-white">{stats?.priceUSD ? `$${stats.priceUSD.toFixed(8)}` : "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Market Cap</span>
+                <span className="text-white">{stats?.marketCap ? `$${stats.marketCap.toLocaleString()}` : "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Holders</span>
+                <span className="text-white">{stats?.holders ?? "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Total Supply</span>
+                <span className="text-white">{stats?.totalSupply ?? "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Token Created</span>
+                <span className="text-white">{stats?.createdAt ? new Date(stats.createdAt).toLocaleString() : "--"}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Pool Created</span>
+                <span className="text-white">{stats?.poolCreatedAt ? new Date(stats.poolCreatedAt).toLocaleString() : "--"}</span>
+              </div>
+            </div>
+
+            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+              <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Token Audit</div>
+              {[
+                { label: "Contract Verified", value: stats?.audit?.verified },
+                { label: "No Honeypot", value: stats?.audit?.noHoneypot },
+                { label: "Renounced", value: stats?.audit?.renounced },
+                { label: "No Blacklist", value: stats?.audit?.noBlacklist },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                  <span>{item.label}</span>
+                  <span className="text-white">{item.value == null ? "--" : item.value ? "YES" : "NO"}</span>
+                </div>
+              ))}
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>B/S Tax</span>
+                <span className="text-white">
+                  {stats?.audit?.buyTax != null || stats?.audit?.sellTax != null
+                    ? `Buy ${stats?.audit?.buyTax ?? 0}% / Sell ${stats?.audit?.sellTax ?? 0}%`
+                    : "--"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Security Metrics</span>
+                <span className="text-white">{stats?.audit?.score ?? "--"}</span>
               </div>
             </div>
           </div>
