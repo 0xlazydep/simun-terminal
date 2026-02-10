@@ -33,8 +33,8 @@ export default function TokenPage() {
   const [gasFee, setGasFee] = useState("2");
   const timeframes = useMemo(
     () => [
-      { label: "1s", resolution: "1S", rangeSeconds: 60 * 30 },
-      { label: "15s", resolution: "15S", rangeSeconds: 60 * 60 * 6 },
+      { label: "1s", resolution: "1S", rangeSeconds: 60 * 20 },
+      { label: "15s", resolution: "15S", rangeSeconds: 60 * 60 * 4 },
       { label: "1m", resolution: "1", rangeSeconds: 60 * 60 * 24 },
       { label: "5m", resolution: "5", rangeSeconds: 60 * 60 * 24 * 3 },
       { label: "15m", resolution: "15", rangeSeconds: 60 * 60 * 24 * 7 },
@@ -125,7 +125,21 @@ export default function TokenPage() {
                 </button>
               ))}
             </div>
-            <div className="flex-1 min-h-[420px]">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-primary/10 text-[10px] font-mono text-primary/70">
+              <div className="flex items-center gap-3">
+                <span>MC {stats?.marketCap ? `$${stats.marketCap.toLocaleString()}` : "--"}</span>
+                <span>VOL 24H {stats?.volume24 ? `$${stats.volume24.toLocaleString()}` : "--"}</span>
+                <span>TXN 24H {stats?.txnCount24 ?? "--"}</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span>B:{stats?.buyCount5m ?? "--"}</span>
+                <span>S:{stats?.sellCount5m ?? "--"}</span>
+                <span>
+                  5m {typeof stats?.change5m === "number" ? `${stats.change5m >= 0 ? "+" : ""}${stats.change5m.toFixed(2)}%` : "--"}
+                </span>
+              </div>
+            </div>
+            <div className="flex-1 min-h-[380px]">
               <CodexChart
                 address={address}
                 resolution={timeframe.resolution}
@@ -134,7 +148,7 @@ export default function TokenPage() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-4 h-[520px] lg:h-full">
+          <div className="flex flex-col gap-4 lg:h-full">
             <div className="border border-primary/20 bg-primary/5 p-4">
               <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Wallet</div>
               <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-primary/60">

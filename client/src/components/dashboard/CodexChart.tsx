@@ -25,10 +25,29 @@ export function CodexChart({ address, resolution, rangeSeconds }: CodexChartProp
   const [error, setError] = useState<string | null>(null);
 
   const range = useMemo(() => {
+    const resolutionSeconds: Record<string, number> = {
+      "1S": 1,
+      "5S": 5,
+      "15S": 15,
+      "30S": 30,
+      "1": 60,
+      "5": 300,
+      "15": 900,
+      "30": 1800,
+      "60": 3600,
+      "240": 14400,
+      "720": 43200,
+      "1D": 86400,
+      "7D": 604800,
+    };
+    const secondsPerBar = resolutionSeconds[resolution] ?? 300;
+    const maxPoints = 1400;
+    const maxRange = maxPoints * secondsPerBar;
+    const effectiveRange = Math.min(rangeSeconds, maxRange);
     const to = Math.floor(Date.now() / 1000);
-    const from = Math.max(0, to - rangeSeconds);
+    const from = Math.max(0, to - effectiveRange);
     return { from, to };
-  }, [rangeSeconds]);
+  }, [rangeSeconds, resolution]);
 
   useEffect(() => {
     if (!containerRef.current) return;
