@@ -439,6 +439,7 @@ export default function TokenPage() {
                 </div>
               </div>
             </div>
+            </div>
             <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Recent Trades</div>
