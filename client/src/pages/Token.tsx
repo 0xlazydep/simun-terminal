@@ -126,23 +126,18 @@ export default function TokenPage() {
 
 
   return (
-    <div className="h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/30 overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans selection:bg-primary/30">
       <Navbar />
 
-      <main className="flex-1 min-h-0 w-full px-4 md:px-6 py-4 md:py-6">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-xs font-mono text-primary/70">
-            TOKEN VIEW {symbolType}
-          </div>
+      <main className="flex-1 min-h-0 w-full px-3 sm:px-4 md:px-6 py-1 sm:py-2 md:py-2 overflow-y-auto page-enter">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-1 panel-rise">
           <Link
             href="/"
             className="text-[10px] font-mono uppercase tracking-wider border border-primary/30 text-primary/80 px-3 py-1 hover:border-primary/60 hover:bg-primary/10"
           >
             Back
           </Link>
-        </div>
-        <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-mono text-primary/70">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-2 text-[9px] sm:text-[10px] font-mono text-primary/70 panel-rise delay-1">
             <span>MC: {stats?.marketCap ? `$${stats.marketCap.toLocaleString()}` : "--"}</span>
             <span>VOL 24H: {stats?.volume24 ? `$${stats.volume24.toLocaleString()}` : "--"}</span>
             <span>TXN 24H: {stats?.txnCount24 ?? "--"}</span>
@@ -158,25 +153,30 @@ export default function TokenPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch">
-          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px] dex-embed flex flex-col">
-            <div className="relative flex-1 min-h-[380px]">
-              <CodexChart
-                address={address}
-                resolution={timeframe.resolution}
-                rangeSeconds={timeframe.rangeSeconds}
-                logScale={logScale}
-                percentScale={percentScale}
-                autoScale={autoScale}
-                crosshairVisible={crosshairVisible}
-                zoomSignal={zoomSignal}
-                resetSignal={resetSignal}
-                onHover={setHoverBar}
-                onSummary={setSummary}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch panel-rise delay-2">
+          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[240px] sm:min-h-[300px] md:min-h-[360px] dex-embed flex flex-col">
+            <div className="relative flex-1 min-h-[260px] sm:min-h-[320px] md:min-h-[380px] pb-12">
+              <div className="absolute left-0 right-0 top-0 bottom-12">
+                <CodexChart
+                  address={address}
+                  resolution={timeframe.resolution}
+                  rangeSeconds={timeframe.rangeSeconds}
+                  logScale={logScale}
+                  percentScale={percentScale}
+                  autoScale={autoScale}
+                  crosshairVisible={crosshairVisible}
+                  zoomSignal={zoomSignal}
+                  resetSignal={resetSignal}
+                  onHover={setHoverBar}
+                  onSummary={setSummary}
+                />
+              </div>
+              <div className="pointer-events-none absolute inset-0 bottom-12 flex items-center justify-center">
+                <span className="chart-watermark">NDI JP NE MUN</span>
+              </div>
 
-              <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 px-4 py-2 bg-black/60 border-b border-primary/20">
-                <div className="flex items-center justify-between text-[11px] font-mono text-white/80">
+              <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 px-3 sm:px-4 py-2 bg-black/60 border-b border-primary/20">
+                <div className="flex items-center justify-between text-[10px] sm:text-[11px] font-mono text-white/80">
                   <div className="flex items-center gap-2">
                     <span className="text-primary/80">
                       {stats?.token?.info?.name || "TOKEN"} / {stats?.token?.info?.symbol || "BASE"}
@@ -184,7 +184,7 @@ export default function TokenPage() {
                     <span className="text-[10px] text-primary/50">on Base · {timeframe.label}</span>
                   </div>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-mono text-primary/70">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[9px] sm:text-[10px] font-mono text-primary/70">
                   {hoverBar ? (
                     <>
                       <span>O {formatPrice(hoverBar.open)}</span>
@@ -212,14 +212,14 @@ export default function TokenPage() {
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-4 right-4 bottom-0 z-10 flex items-center justify-between translate-y-0.5">
+              <div className="pointer-events-auto absolute left-3 sm:left-4 right-3 sm:right-4 bottom-2 z-10 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
                   {timeframes.map((frame) => (
                     <button
                       key={frame.label}
                       type="button"
                       onClick={() => setTimeframe(frame)}
-                      className={`px-2 py-1 text-[9px] font-mono ${
+                      className={`px-2 py-1 text-[9px] font-mono smooth-btn ${
                         frame.label === timeframe.label
                           ? "text-primary bg-primary/10"
                           : "text-primary/60 hover:text-primary"
@@ -230,20 +230,13 @@ export default function TokenPage() {
                   ))}
                 </div>
                 <div className="flex items-center gap-2 text-[9px] font-mono text-primary/70 bg-black/60 px-2 py-1 rounded">
-                  <span className="text-primary/50 whitespace-nowrap">
-                    {hoverBar
-                      ? new Date(hoverBar.time * 1000).toLocaleString()
-                      : summary.last
-                        ? new Date(summary.last.time * 1000).toLocaleString()
-                        : "--"}
-                  </span>
                   <button
                     type="button"
                     onClick={() => {
                       setPercentScale((v) => !v);
                       if (!percentScale) setLogScale(false);
                     }}
-                    className={`px-2 py-1 ${percentScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
+                    className={`px-2 py-1 smooth-btn ${percentScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     %
                   </button>
@@ -253,67 +246,67 @@ export default function TokenPage() {
                       setLogScale((v) => !v);
                       if (!logScale) setPercentScale(false);
                     }}
-                    className={`px-2 py-1 ${logScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
+                    className={`px-2 py-1 smooth-btn ${logScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     log
                   </button>
                   <button
                     type="button"
                     onClick={() => setAutoScale((v) => !v)}
-                    className={`px-2 py-1 ${autoScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
+                    className={`px-2 py-1 smooth-btn ${autoScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     auto
                   </button>
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-1 top-16 z-10 flex max-h-[70%] flex-col gap-1.5 overflow-y-auto rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70 no-scrollbar">
+              <div className="pointer-events-auto absolute left-1 top-16 z-10 flex max-h-[70%] flex-col gap-1.5 overflow-y-auto rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70 no-scrollbar panel-rise delay-3">
                 <button
                   type="button"
                   onClick={() => setCrosshairVisible((v) => !v)}
-                  className={`p-1.5 border ${crosshairVisible ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                  className={`p-1.5 border smooth-btn ${crosshairVisible ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
                 >
                   <Crosshair className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setResetSignal((v) => v + 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
                 >
                   <LineChart className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setAutoScale((v) => !v)}
-                  className={`p-1.5 border ${autoScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                  className={`p-1.5 border smooth-btn ${autoScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
                 >
                   <Sliders className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setPercentScale((v) => !v)}
-                  className={`p-1.5 border ${percentScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                  className={`p-1.5 border smooth-btn ${percentScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
                 >
                   <Network className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setLogScale((v) => !v)}
-                  className={`p-1.5 border ${logScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                  className={`p-1.5 border smooth-btn ${logScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
                 >
                   <MousePointer className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setZoomSignal((v) => v + 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
                 >
                   <ZoomIn className="h-4 w-4" />
                 </button>
                 <button
                   type="button"
                   onClick={() => setZoomSignal((v) => v - 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
                 >
                   <Ruler className="h-4 w-4" />
                 </button>

@@ -306,7 +306,8 @@ export function CodexChart({
           const secondsPerBar = resolutionSeconds[resolution] ?? 300;
           const visibleBars = Math.min(Math.max(candles.length, 200), 400);
           const from = last.time - secondsPerBar * (visibleBars - 1);
-          chartRef.current?.timeScale().setVisibleRange({ from, to: last.time });
+          const rightPad = secondsPerBar * 20;
+          chartRef.current?.timeScale().setVisibleRange({ from, to: last.time + rightPad });
         } else {
           chartRef.current?.timeScale().fitContent();
         }
