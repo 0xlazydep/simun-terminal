@@ -246,7 +246,7 @@ export default function TokenPage() {
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch panel-rise delay-2">
           <div className="flex flex-col gap-4">
             <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[240px] sm:min-h-[300px] md:min-h-[360px] dex-embed flex flex-col">
-            <div className="relative flex-1 min-h-[260px] sm:min-h-[320px] md:min-h-[380px] pb-12">
+              <div className="relative flex-1 min-h-[260px] sm:min-h-[320px] md:min-h-[380px] pb-12">
               <div className="absolute left-0 right-0 top-0 bottom-12">
                 <CodexChart
                   address={address}
