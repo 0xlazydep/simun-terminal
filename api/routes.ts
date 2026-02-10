@@ -248,18 +248,14 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
         return { ok: true as const, events: json.data?.getTokenEvents?.events ?? [] };
       };
 
-      const attempts = [
-        { address, networkId: 8453 },
-        { address, networkId: Number(process.env.CHAIN_ID || 8453) },
-        { address, networkId: 8453, chainId: 8453 },
-        { address, networkId: 8453, network: "base" },
-      ];
+      const networkId = Number(process.env.CHAIN_ID || 8453);
+      const attempts = [{ address, networkId }];
 
       let lastError: string | null = null;
       for (const attempt of attempts) {
         const result = await tryQuery(attempt);
         if (result.ok) {
-          return res.json({ events: result.events });
+          return res.json({ data: result.events });
         }
         lastError = result.error;
       }

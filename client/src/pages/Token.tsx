@@ -27,19 +27,6 @@ export default function TokenPage() {
     sellCount5m?: number;
     change5m?: number;
   } | null>(null);
-  const [events, setEvents] = useState<
-    Array<{
-      timestamp: number;
-      eventDisplayType: string;
-      maker: string;
-      transactionHash: string;
-      data?: {
-        priceUsd?: number;
-        priceUsdTotal?: number;
-        amountNonLiquidityToken?: number;
-      };
-    }>
-  >([]);
   const { address: walletAddress } = useWallet();
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
@@ -88,6 +75,7 @@ export default function TokenPage() {
             chartStyle: "0",
             chartType: "usd",
             interval: "5",
+            tab: "chart",
           });
           setDexUrl(`https://dexscreener.com/base/${pairAddress}?${params.toString()}`);
         }
@@ -99,30 +87,6 @@ export default function TokenPage() {
     return () => {
       active = false;
     };
-  }, [address]);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/defined/token-events?address=${address}&limit=30`);
-        if (!res.ok) return;
-        const json = (await res.json()) as { data?: any[] };
-        if (!active) return;
-        setEvents(json.data ?? []);
-      } catch {
-        if (active) setEvents([]);
-      }
-    };
-    if (address) {
-      load();
-      const interval = setInterval(load, 5000);
-      return () => {
-        active = false;
-        clearInterval(interval);
-      };
-    }
-    return undefined;
   }, [address]);
 
 
@@ -159,23 +123,23 @@ export default function TokenPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4">
-          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px]">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch">
+          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px] dex-embed">
             {dexUrl ? (
               <iframe
                 title="Dexscreener Chart"
                 src={dexUrl}
-                className="w-full h-[420px] md:h-[560px]"
+                className="w-full h-[520px] lg:h-full"
                 allow="clipboard-write; fullscreen"
               />
             ) : (
-              <div className="h-[420px] md:h-[560px] flex items-center justify-center text-primary/50 text-xs font-mono">
+              <div className="h-[520px] lg:h-full flex items-center justify-center text-primary/50 text-xs font-mono">
                 Loading Dexscreener chart...
               </div>
             )}
           </div>
 
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 h-[520px] lg:h-full">
             <div className="border border-primary/20 bg-primary/5 p-4">
               <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Wallet</div>
               <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-primary/60">
@@ -196,7 +160,7 @@ export default function TokenPage() {
               </div>
             </div>
 
-            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3 flex-1">
               <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Trade</div>
               <div>
                 <label className="text-[10px] font-mono text-primary/60">Amount (WETH)</label>
@@ -259,68 +223,6 @@ export default function TokenPage() {
                 Configure slippage and gas manually. Trades execute via your connected wallet.
               </div>
             </div>
-          </div>
-        </div>
-
-        <div className="mt-3 border border-primary/20 bg-primary/5">
-          <div className="px-3 py-2 border-b border-primary/20 text-[10px] font-mono text-primary/70">
-            RECENT TRADES
-          </div>
-          <div className="max-h-56 overflow-y-auto no-scrollbar">
-            <table className="w-full text-[10px] font-mono">
-              <thead className="text-primary/60">
-                <tr className="border-b border-primary/10">
-                  <th className="text-left px-3 py-2">AGE</th>
-                  <th className="text-left px-3 py-2">PRICE</th>
-                  <th className="text-left px-3 py-2">AMT</th>
-                  <th className="text-left px-3 py-2">TRADER</th>
-                  <th className="text-left px-3 py-2">TX</th>
-                </tr>
-              </thead>
-              <tbody>
-                {events.map((event, index) => {
-                  const isBuy = event.eventDisplayType?.toLowerCase() === "buy";
-                  const ageSec = Math.max(0, Math.floor(Date.now() / 1000 - event.timestamp));
-                  const age = ageSec < 60 ? `${ageSec}s` : `${Math.floor(ageSec / 60)}m`;
-                  const price = Number(event.data?.priceUsd ?? NaN);
-                  const amount = Number(
-                    event.data?.priceUsdTotal ?? event.data?.amountNonLiquidityToken ?? NaN,
-                  );
-                  return (
-                    <tr
-                      key={`${event.transactionHash}-${event.timestamp}-${index}`}
-                      className={isBuy ? "bg-green-500/5" : "bg-red-500/5"}
-                    >
-                      <td className="px-3 py-2">{age}</td>
-                      <td className="px-3 py-2">
-                        {Number.isFinite(price) ? `$${price.toFixed(6)}` : "--"}
-                      </td>
-                      <td className="px-3 py-2">
-                        {Number.isFinite(amount) ? `$${amount.toFixed(2)}` : "--"}
-                      </td>
-                      <td className="px-3 py-2">{event.maker?.slice(0, 6)}…{event.maker?.slice(-4)}</td>
-                      <td className="px-3 py-2">
-                        <a
-                          href={`https://basescan.org/tx/${event.transactionHash}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary/80 hover:text-primary"
-                        >
-                          {event.transactionHash?.slice(0, 6)}…{event.transactionHash?.slice(-4)}
-                        </a>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {!events.length && (
-                  <tr>
-                    <td colSpan={5} className="px-3 py-3 text-primary/50">
-                      No recent trades.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
           </div>
         </div>
       </main>
