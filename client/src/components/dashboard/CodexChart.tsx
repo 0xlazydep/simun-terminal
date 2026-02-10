@@ -48,6 +48,7 @@ export function CodexChart({
   const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastClose, setLastClose] = useState<number | null>(null);
 
   const resolutionSeconds = useMemo(
     () => ({
@@ -265,10 +266,11 @@ export function CodexChart({
           prevClose: prev?.close,
           volumeSum,
         });
+        setLastClose(last?.close ?? null);
 
         if (last) {
           const secondsPerBar = resolutionSeconds[resolution] ?? 300;
-          const visibleBars = Math.min(candles.length, 300);
+          const visibleBars = Math.min(Math.max(candles.length, 60), 300);
           const from = last.time - secondsPerBar * (visibleBars - 1);
           chartRef.current?.timeScale().setVisibleRange({ from, to: last.time });
         } else {
@@ -286,6 +288,24 @@ export function CodexChart({
       active = false;
     };
   }, [address, resolution, range.from, range.to]);
+
+  useEffect(() => {
+    if (!candleRef.current || lastClose == null) return;
+    const abs = Math.abs(lastClose);
+    let precision = 6;
+    if (abs >= 1) precision = 4;
+    else if (abs >= 0.01) precision = 6;
+    else if (abs >= 0.0001) precision = 8;
+    else precision = 10;
+    const minMove = Math.pow(10, -precision);
+    candleRef.current.applyOptions({
+      priceFormat: {
+        type: "price",
+        precision,
+        minMove,
+      },
+    });
+  }, [lastClose]);
 
   return (
     <div className="relative h-full w-full">
