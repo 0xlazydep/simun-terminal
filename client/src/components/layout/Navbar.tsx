@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import type { DexPair } from "@/types/dexscreener";
 import { useLocation } from "wouter";
+import { useWallet } from "@/components/wallet/WalletProvider";
 
 type NavbarProps = {
   onSelectPair?: (pair: DexPair) => void;
@@ -18,6 +19,9 @@ export function Navbar({ onSelectPair }: NavbarProps) {
   const [searching, setSearching] = useState(false);
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const { address, balance, connect, disconnect, refresh } = useWallet();
+  const [walletOpen, setWalletOpen] = useState(false);
+  const walletWrapRef = useRef<HTMLDivElement>(null);
 
   const toggleSearch = () => {
     setSearchOpen((open) => {
@@ -49,6 +53,18 @@ export function Navbar({ onSelectPair }: NavbarProps) {
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [searchOpen]);
+
+  useEffect(() => {
+    if (!walletOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!walletWrapRef.current) return;
+      if (!walletWrapRef.current.contains(event.target as Node)) {
+        setWalletOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [walletOpen]);
 
   const runSearch = async () => {
     const address = query.trim();
@@ -162,12 +178,62 @@ export function Navbar({ onSelectPair }: NavbarProps) {
             )}
           </div>
 
-          <Button 
-            variant="outline" 
-            className="font-orbitron border-primary text-primary hover:bg-primary hover:text-black transition-all duration-300 uppercase tracking-wider h-4 px-2 text-[8px]"
+          <div
+            ref={walletWrapRef}
+            className="relative"
+            onMouseEnter={() => setWalletOpen(true)}
+            onMouseLeave={() => setWalletOpen(false)}
           >
-            [ Connect Wallet ]
-          </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!address) {
+                  connect();
+                  return;
+                }
+                setWalletOpen((open) => !open);
+              }}
+              className="font-orbitron border-primary text-primary hover:bg-primary hover:text-black transition-all duration-300 uppercase tracking-wider h-4 px-2 text-[8px]"
+            >
+              {address ? `[ ${address.slice(0, 6)}...${address.slice(-4)} ]` : "[ Connect Wallet ]"}
+            </Button>
+            {walletOpen && (
+              <div className="absolute right-0 mt-2 w-48 border border-primary/30 bg-background/95 backdrop-blur p-3 text-[10px] font-mono text-primary/80 shadow-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-primary/60">BALANCE</span>
+                  <span className="text-white">{balance} ETH</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="text-primary/60">STATUS</span>
+                  <span className="text-white">{address ? "CONNECTED" : "DISCONNECTED"}</span>
+                </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={address ? disconnect : connect}
+                    className="flex-1 border border-primary/30 px-2 py-1 text-[9px] text-primary/80 hover:border-primary hover:text-white"
+                  >
+                    {address ? "DISCONNECT" : "CONNECT"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={refresh}
+                    className="flex-1 border border-primary/30 px-2 py-1 text-[9px] text-primary/80 hover:border-primary hover:text-white"
+                  >
+                    REFRESH
+                  </button>
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="flex-1 border border-primary/30 px-2 py-1 text-[9px] text-primary/80 hover:border-primary hover:text-white"
+                  >
+                    SETTINGS
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </nav>

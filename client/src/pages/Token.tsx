@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
-import { ChartSection } from "@/components/dashboard/ChartSection";
 import { Footer } from "@/components/layout/Footer";
+import { useWallet } from "@/components/wallet/WalletProvider";
 
 function parseType(search: string) {
   const params = new URLSearchParams(search);
@@ -17,9 +17,7 @@ export default function TokenPage() {
     return parts[2] || "";
   }, [path]);
   const symbolType = useMemo(() => parseType(search), [search]);
-  const [timeframe, setTimeframe] = useState<
-    "1s" | "5s" | "10s" | "1m" | "5m" | "1h" | "4h" | "1d"
-  >("5m");
+  const [dexUrl, setDexUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     priceUSD?: number;
     marketCap?: number;
@@ -42,6 +40,10 @@ export default function TokenPage() {
       };
     }>
   >([]);
+  const { address: walletAddress } = useWallet();
+  const [amount, setAmount] = useState("");
+  const [slippage, setSlippage] = useState("0.5");
+  const [gasFee, setGasFee] = useState("2");
 
   useEffect(() => {
     let active = true;
@@ -65,6 +67,38 @@ export default function TokenPage() {
       };
     }
     return undefined;
+  }, [address]);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const res = await fetch(`/api/defined/token?address=${address}`);
+        if (!res.ok) return;
+        const json = (await res.json()) as { pairs?: Array<{ pairAddress?: string }> };
+        if (!active) return;
+        const pairAddress = json.pairs?.[0]?.pairAddress;
+        if (pairAddress) {
+          const params = new URLSearchParams({
+            embed: "1",
+            loadChartSettings: "0",
+            chartLeftToolbar: "0",
+            chartTheme: "dark",
+            theme: "dark",
+            chartStyle: "0",
+            chartType: "usd",
+            interval: "5",
+          });
+          setDexUrl(`https://dexscreener.com/base/${pairAddress}?${params.toString()}`);
+        }
+      } catch {
+        if (active) setDexUrl(null);
+      }
+    };
+    if (address) load();
+    return () => {
+      active = false;
+    };
   }, [address]);
 
   useEffect(() => {
@@ -109,21 +143,6 @@ export default function TokenPage() {
           </Link>
         </div>
         <div className="mb-3 flex items-center justify-between gap-3 text-[10px] font-mono text-primary/70">
-          <div className="flex items-center gap-1">
-            {(["1s", "5s", "10s", "1m", "5m", "1h", "4h", "1d"] as const).map((tf) => (
-              <button
-                key={tf}
-                type="button"
-                onClick={() => setTimeframe(tf)}
-                className={
-                  "px-2 py-1 border border-primary/30 uppercase tracking-wider " +
-                  (timeframe === tf ? "bg-primary/20 text-white" : "text-primary/70")
-                }
-              >
-                {tf}
-              </button>
-            ))}
-          </div>
           <div className="flex items-center gap-4">
             <span>MC: {stats?.marketCap ? `$${stats.marketCap.toLocaleString()}` : "--"}</span>
             <span>VOL 24H: {stats?.volume24 ? `$${stats.volume24.toLocaleString()}` : "--"}</span>
@@ -140,13 +159,107 @@ export default function TokenPage() {
           </div>
         </div>
 
-        <div className="h-[calc(100%-14rem)]">
-          <ChartSection
-            symbolAddress={address || null}
-            symbolType={symbolType}
-            timeframe={timeframe}
-            onTimeframeChange={setTimeframe}
-          />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4">
+          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px]">
+            {dexUrl ? (
+              <iframe
+                title="Dexscreener Chart"
+                src={dexUrl}
+                className="w-full h-[420px] md:h-[560px]"
+                allow="clipboard-write; fullscreen"
+              />
+            ) : (
+              <div className="h-[420px] md:h-[560px] flex items-center justify-center text-primary/50 text-xs font-mono">
+                Loading Dexscreener chart...
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="border border-primary/20 bg-primary/5 p-4">
+              <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Wallet</div>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Status</span>
+                <span className="text-white">
+                  {walletAddress ? "CONNECTED" : "DISCONNECTED"}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Address</span>
+                <span className="text-white">
+                  {walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "--"}
+                </span>
+              </div>
+              <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-primary/60">
+                <span>Route</span>
+                <span className="text-white">Uniswap v4</span>
+              </div>
+            </div>
+
+            <div className="border border-primary/20 bg-primary/5 p-4 flex flex-col gap-3">
+              <div className="text-[11px] font-mono text-primary/70 uppercase tracking-wider">Trade</div>
+              <div>
+                <label className="text-[10px] font-mono text-primary/60">Amount (WETH)</label>
+                <input
+                  value={amount}
+                  onChange={(event) => setAmount(event.target.value)}
+                  placeholder="0.0"
+                  className="mt-1 w-full border border-primary/30 bg-black/30 px-3 py-2 text-xs text-white outline-none"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-mono text-primary/60">Slippage (%)</label>
+                  <input
+                    value={slippage}
+                    onChange={(event) => setSlippage(event.target.value)}
+                    className="mt-1 w-full border border-primary/30 bg-black/30 px-3 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-mono text-primary/60">Gas (gwei)</label>
+                  <input
+                    value={gasFee}
+                    onChange={(event) => setGasFee(event.target.value)}
+                    className="mt-1 w-full border border-primary/30 bg-black/30 px-3 py-2 text-xs text-white outline-none"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {["0.5", "1", "2"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setSlippage(preset)}
+                    className="border border-primary/30 px-2 py-1 text-[9px] font-mono text-primary/70 hover:border-primary"
+                  >
+                    {preset}% SLIP
+                  </button>
+                ))}
+                {["2", "5", "10"].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => setGasFee(preset)}
+                    className="border border-primary/30 px-2 py-1 text-[9px] font-mono text-primary/70 hover:border-primary"
+                  >
+                    {preset} GWEI
+                  </button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <button className="border border-primary/60 bg-primary/10 text-primary text-xs font-mono py-2 hover:bg-primary hover:text-black">
+                  BUY
+                </button>
+                <button className="border border-primary/30 text-primary/70 text-xs font-mono py-2 hover:border-primary hover:text-white">
+                  SELL
+                </button>
+              </div>
+              <div className="text-[9px] font-mono text-primary/40">
+                Configure slippage and gas manually. Trades execute via your connected wallet.
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="mt-3 border border-primary/20 bg-primary/5">
