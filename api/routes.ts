@@ -198,6 +198,102 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     }
   });
 
+  app.get("/api/defined/bars", async (req, res) => {
+    const address = (req.query.address as string | undefined)?.trim();
+    const resolution = (req.query.resolution as string | undefined)?.trim();
+    const from = Number(req.query.from);
+    const to = Number(req.query.to);
+    if (!address) {
+      return res.status(400).json({ message: "Missing token address" });
+    }
+    if (!resolution) {
+      return res.status(400).json({ message: "Missing resolution" });
+    }
+    if (!Number.isFinite(from) || !Number.isFinite(to)) {
+      return res.status(400).json({ message: "Missing from/to range" });
+    }
+    const allowed = new Set([
+      "1S",
+      "5S",
+      "15S",
+      "30S",
+      "1",
+      "5",
+      "15",
+      "30",
+      "60",
+      "240",
+      "720",
+      "1D",
+      "7D",
+    ]);
+    if (!allowed.has(resolution)) {
+      return res.status(400).json({ message: "Invalid resolution" });
+    }
+    const apiKey = process.env.DEFINED_API_KEY || process.env.CODEX_API_KEY;
+    if (!apiKey) {
+      return res.status(502).json({ message: "Missing DEFINED_API_KEY" });
+    }
+    try {
+      const query = `
+        query TokenBars(
+          $symbol: String!
+          $from: Int!
+          $to: Int!
+          $resolution: String!
+          $currencyCode: QuoteCurrency
+          $removeLeadingNullValues: Boolean
+        ) {
+          getTokenBars(
+            symbol: $symbol
+            from: $from
+            to: $to
+            resolution: $resolution
+            currencyCode: $currencyCode
+            removeLeadingNullValues: $removeLeadingNullValues
+          ) {
+            o
+            h
+            l
+            c
+            t
+            s
+            volume
+          }
+        }
+      `;
+      const networkId = Number(process.env.CHAIN_ID || 8453);
+      const variables = {
+        symbol: `${address}:${networkId}`,
+        from,
+        to,
+        resolution,
+        currencyCode: "USD",
+        removeLeadingNullValues: true,
+      };
+      const resp = await fetch("https://graph.codex.io/graphql", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader(apiKey),
+        },
+        body: JSON.stringify({ query, variables }),
+      });
+      const text = await resp.text();
+      if (!resp.ok) {
+        return res.status(502).json({ message: "Upstream error", error: text });
+      }
+      const json = JSON.parse(text) as { data?: any; errors?: Array<{ message?: string }> };
+      if (json.errors?.length) {
+        return res.status(502).json({ message: "Upstream error", error: json.errors[0]?.message });
+      }
+      return res.json(json.data?.getTokenBars ?? null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return res.status(502).json({ message: "Failed to fetch bars", error: message });
+    }
+  });
+
   app.get("/api/defined/token-events", async (req, res) => {
     const address = (req.query.address as string | undefined)?.trim();
     const limit = Math.min(Number(req.query.limit || "20"), 50);

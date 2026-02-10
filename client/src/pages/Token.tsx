@@ -3,6 +3,7 @@ import { useLocation, Link } from "wouter";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { CodexChart } from "@/components/dashboard/CodexChart";
 
 function parseType(search: string) {
   const params = new URLSearchParams(search);
@@ -17,7 +18,6 @@ export default function TokenPage() {
     return parts[2] || "";
   }, [path]);
   const symbolType = useMemo(() => parseType(search), [search]);
-  const [dexUrl, setDexUrl] = useState<string | null>(null);
   const [stats, setStats] = useState<{
     priceUSD?: number;
     marketCap?: number;
@@ -31,6 +31,23 @@ export default function TokenPage() {
   const [amount, setAmount] = useState("");
   const [slippage, setSlippage] = useState("0.5");
   const [gasFee, setGasFee] = useState("2");
+  const timeframes = useMemo(
+    () => [
+      { label: "1s", resolution: "1S", rangeSeconds: 60 * 30 },
+      { label: "15s", resolution: "15S", rangeSeconds: 60 * 60 * 6 },
+      { label: "1m", resolution: "1", rangeSeconds: 60 * 60 * 24 },
+      { label: "5m", resolution: "5", rangeSeconds: 60 * 60 * 24 * 3 },
+      { label: "15m", resolution: "15", rangeSeconds: 60 * 60 * 24 * 7 },
+      { label: "30m", resolution: "30", rangeSeconds: 60 * 60 * 24 * 14 },
+      { label: "1h", resolution: "60", rangeSeconds: 60 * 60 * 24 * 30 },
+      { label: "4h", resolution: "240", rangeSeconds: 60 * 60 * 24 * 90 },
+      { label: "1d", resolution: "1D", rangeSeconds: 60 * 60 * 24 * 365 },
+      { label: "1w", resolution: "7D", rangeSeconds: 60 * 60 * 24 * 365 * 2 },
+      { label: "1M", resolution: "1D", rangeSeconds: 60 * 60 * 24 * 30 },
+    ],
+    [],
+  );
+  const [timeframe, setTimeframe] = useState(timeframes[3]);
 
   useEffect(() => {
     let active = true;
@@ -54,39 +71,6 @@ export default function TokenPage() {
       };
     }
     return undefined;
-  }, [address]);
-
-  useEffect(() => {
-    let active = true;
-    const load = async () => {
-      try {
-        const res = await fetch(`/api/defined/token?address=${address}`);
-        if (!res.ok) return;
-        const json = (await res.json()) as { pairs?: Array<{ pairAddress?: string }> };
-        if (!active) return;
-        const pairAddress = json.pairs?.[0]?.pairAddress;
-        if (pairAddress) {
-          const params = new URLSearchParams({
-            embed: "1",
-            loadChartSettings: "0",
-            chartLeftToolbar: "0",
-            chartTheme: "dark",
-            theme: "dark",
-            chartStyle: "0",
-            chartType: "usd",
-            interval: "5",
-            tab: "chart",
-          });
-          setDexUrl(`https://dexscreener.com/base/${pairAddress}?${params.toString()}`);
-        }
-      } catch {
-        if (active) setDexUrl(null);
-      }
-    };
-    if (address) load();
-    return () => {
-      active = false;
-    };
   }, [address]);
 
 
@@ -124,19 +108,30 @@ export default function TokenPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch">
-          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px] dex-embed">
-            {dexUrl ? (
-              <iframe
-                title="Dexscreener Chart"
-                src={dexUrl}
-                className="w-full h-[520px] lg:h-full"
-                allow="clipboard-write; fullscreen"
+          <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px] dex-embed flex flex-col">
+            <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-primary/20 bg-black/30">
+              {timeframes.map((frame) => (
+                <button
+                  key={frame.label}
+                  type="button"
+                  onClick={() => setTimeframe(frame)}
+                  className={`px-2 py-1 text-[9px] font-mono border ${
+                    frame.label === timeframe.label
+                      ? "border-primary text-primary bg-primary/10"
+                      : "border-primary/20 text-primary/60 hover:border-primary/60"
+                  }`}
+                >
+                  {frame.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 min-h-[420px]">
+              <CodexChart
+                address={address}
+                resolution={timeframe.resolution}
+                rangeSeconds={timeframe.rangeSeconds}
               />
-            ) : (
-              <div className="h-[520px] lg:h-full flex items-center justify-center text-primary/50 text-xs font-mono">
-                Loading Dexscreener chart...
-              </div>
-            )}
+            </div>
           </div>
 
           <div className="flex flex-col gap-4 h-[520px] lg:h-full">

@@ -1,0 +1,183 @@
+import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type CodexChartProps = {
+  address: string;
+  resolution: string;
+  rangeSeconds: number;
+};
+
+type BarResponse = {
+  o?: Array<number | null>;
+  h?: Array<number | null>;
+  l?: Array<number | null>;
+  c?: Array<number | null>;
+  t?: Array<number | null>;
+  volume?: Array<number | null>;
+};
+
+export function CodexChart({ address, resolution, rangeSeconds }: CodexChartProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const chartRef = useRef<IChartApi | null>(null);
+  const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const volumeRef = useRef<ISeriesApi<"Histogram"> | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const range = useMemo(() => {
+    const to = Math.floor(Date.now() / 1000);
+    const from = Math.max(0, to - rangeSeconds);
+    return { from, to };
+  }, [rangeSeconds]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const chart = createChart(containerRef.current, {
+      layout: {
+        background: { color: "transparent" },
+        textColor: "rgba(255, 255, 255, 0.7)",
+        fontFamily: "var(--font-pixel)",
+        fontSize: 11,
+      },
+      grid: {
+        vertLines: { color: "rgba(0, 255, 128, 0.08)" },
+        horzLines: { color: "rgba(0, 255, 128, 0.08)" },
+      },
+      crosshair: {
+        mode: 0,
+      },
+      rightPriceScale: {
+        borderColor: "rgba(0, 255, 128, 0.2)",
+      },
+      timeScale: {
+        borderColor: "rgba(0, 255, 128, 0.2)",
+      },
+      watermark: {
+        visible: false,
+      },
+    });
+
+    const candles = chart.addCandlestickSeries({
+      upColor: "#00ff80",
+      downColor: "#ff4d6d",
+      borderUpColor: "#00ff80",
+      borderDownColor: "#ff4d6d",
+      wickUpColor: "#00ff80",
+      wickDownColor: "#ff4d6d",
+    });
+
+    const volume = chart.addHistogramSeries({
+      color: "rgba(0, 255, 128, 0.35)",
+      priceFormat: { type: "volume" },
+      priceScaleId: "",
+    });
+    volume.priceScale().applyOptions({
+      scaleMargins: { top: 0.8, bottom: 0 },
+    });
+
+    chartRef.current = chart;
+    candleRef.current = candles;
+    volumeRef.current = volume;
+
+    const resize = () => {
+      if (!containerRef.current) return;
+      chart.applyOptions({
+        width: containerRef.current.clientWidth,
+        height: containerRef.current.clientHeight,
+      });
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+      chart.remove();
+      chartRef.current = null;
+      candleRef.current = null;
+      volumeRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!address) return;
+    let active = true;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const params = new URLSearchParams({
+          address,
+          resolution,
+          from: String(range.from),
+          to: String(range.to),
+        });
+        const res = await fetch(`/api/defined/bars?${params.toString()}`);
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(text || "Failed to load bars");
+        }
+        const json = (await res.json()) as BarResponse | null;
+        if (!active || !json) return;
+        const { o = [], h = [], l = [], c = [], t = [], volume = [] } = json;
+        const candles = [];
+        const volumes = [];
+        for (let i = 0; i < t.length; i += 1) {
+          const time = t[i];
+          const open = o[i];
+          const high = h[i];
+          const low = l[i];
+          const close = c[i];
+          if (
+            time == null ||
+            open == null ||
+            high == null ||
+            low == null ||
+            close == null
+          ) {
+            continue;
+          }
+          candles.push({
+            time: Number(time),
+            open: Number(open),
+            high: Number(high),
+            low: Number(low),
+            close: Number(close),
+          });
+          const vol = volume[i];
+          if (vol != null) {
+            volumes.push({
+              time: Number(time),
+              value: Number(vol),
+              color: close >= open ? "rgba(0, 255, 128, 0.45)" : "rgba(255, 77, 109, 0.45)",
+            });
+          }
+        }
+        candleRef.current?.setData(candles);
+        volumeRef.current?.setData(volumes);
+        chartRef.current?.timeScale().fitContent();
+      } catch (err) {
+        if (!active) return;
+        setError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        if (active) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      active = false;
+    };
+  }, [address, resolution, range.from, range.to]);
+
+  return (
+    <div className="relative h-full w-full">
+      <div ref={containerRef} className="absolute inset-0" />
+      {(loading || error) && (
+        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-mono text-primary/60 bg-black/40">
+          {error ? "Chart data unavailable" : "Loading chart..."}
+        </div>
+      )}
+    </div>
+  );
+}
