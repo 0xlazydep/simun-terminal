@@ -49,8 +49,8 @@ export function CodexChart({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const range = useMemo(() => {
-    const resolutionSeconds: Record<string, number> = {
+  const resolutionSeconds = useMemo(
+    () => ({
       "1S": 1,
       "5S": 5,
       "15S": 15,
@@ -64,7 +64,11 @@ export function CodexChart({
       "720": 43200,
       "1D": 86400,
       "7D": 604800,
-    };
+    }),
+    [],
+  );
+
+  const range = useMemo(() => {
     const secondsPerBar = resolutionSeconds[resolution] ?? 300;
     const maxPoints = 1400;
     const maxRange = maxPoints * secondsPerBar;
@@ -72,7 +76,7 @@ export function CodexChart({
     const to = Math.floor(Date.now() / 1000);
     const from = Math.max(0, to - effectiveRange);
     return { from, to };
-  }, [rangeSeconds, resolution]);
+  }, [rangeSeconds, resolution, resolutionSeconds]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -96,6 +100,10 @@ export function CodexChart({
       },
       timeScale: {
         borderColor: "rgba(0, 255, 128, 0.2)",
+        rightOffset: 4,
+        barSpacing: 8,
+        timeVisible: true,
+        secondsVisible: resolution.endsWith("S"),
       },
       watermark: {
         visible: false,
@@ -109,15 +117,18 @@ export function CodexChart({
       borderDownColor: "#ff4d6d",
       wickUpColor: "#00ff80",
       wickDownColor: "#ff4d6d",
+      priceLineVisible: true,
+      priceLineColor: "rgba(0, 255, 128, 0.6)",
+      priceLineWidth: 1,
     });
 
     const volume = chart.addHistogramSeries({
       color: "rgba(0, 255, 128, 0.35)",
       priceFormat: { type: "volume" },
-      priceScaleId: "",
+      priceScaleId: "volume",
     });
     volume.priceScale().applyOptions({
-      scaleMargins: { top: 0.8, bottom: 0 },
+      scaleMargins: { top: 0.6, bottom: 0 },
     });
 
     chartRef.current = chart;
@@ -180,6 +191,15 @@ export function CodexChart({
       autoScale: autoScale ?? true,
     });
   }, [logScale, percentScale, autoScale]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    chartRef.current.timeScale().applyOptions({
+      secondsVisible: resolution.endsWith("S"),
+      timeVisible: true,
+      barSpacing: resolution.endsWith("S") ? 6 : 8,
+    });
+  }, [resolution]);
 
   useEffect(() => {
     if (!address) return;
@@ -246,7 +266,14 @@ export function CodexChart({
           volumeSum,
         });
 
-        chartRef.current?.timeScale().fitContent();
+        if (last) {
+          const secondsPerBar = resolutionSeconds[resolution] ?? 300;
+          const visibleBars = Math.min(candles.length, 300);
+          const from = last.time - secondsPerBar * (visibleBars - 1);
+          chartRef.current?.timeScale().setVisibleRange({ from, to: last.time });
+        } else {
+          chartRef.current?.timeScale().fitContent();
+        }
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Failed to load");

@@ -82,6 +82,21 @@ export default function TokenPage() {
   const [logScale, setLogScale] = useState(false);
   const [autoScale, setAutoScale] = useState(true);
 
+  const formatPrice = (value?: number) => {
+    if (value == null || Number.isNaN(value)) return "--";
+    if (value >= 1) return value.toFixed(6);
+    if (value >= 0.01) return value.toFixed(8);
+    if (value >= 0.0001) return value.toFixed(10);
+    return value.toFixed(12);
+  };
+
+  const formatVolume = (value?: number) => {
+    if (value == null || Number.isNaN(value)) return "--";
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
+    return value.toFixed(2);
+  };
+
   useEffect(() => {
     let active = true;
     const load = async () => {
@@ -154,27 +169,32 @@ export default function TokenPage() {
                 onSummary={setSummary}
               />
 
-              <div className="pointer-events-none absolute left-4 right-24 top-3 text-[11px] font-mono text-white/80">
-                <div className="flex items-center gap-2">
-                  <span className="text-primary/80">
-                    {stats?.token?.info?.name || "TOKEN"} / {stats?.token?.info?.symbol || "BASE"}
-                  </span>
-                  <span className="text-[10px] text-primary/50">on Base · {timeframe.label}</span>
+              <div className="pointer-events-none absolute left-0 right-0 top-0 px-4 py-2 bg-black/50 border-b border-primary/20">
+                <div className="flex items-center justify-between text-[11px] font-mono text-white/80">
+                  <div className="flex items-center gap-2">
+                    <span className="text-primary/80">
+                      {stats?.token?.info?.name || "TOKEN"} / {stats?.token?.info?.symbol || "BASE"}
+                    </span>
+                    <span className="text-[10px] text-primary/50">on Base · {timeframe.label}</span>
+                  </div>
+                  <div className="text-right text-[12px] font-mono text-white">
+                    {formatPrice(hoverBar?.close ?? summary.last?.close)}
+                  </div>
                 </div>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-primary/70">
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-mono text-primary/70">
                   {hoverBar ? (
                     <>
-                      <span>O {hoverBar.open.toFixed(8)}</span>
-                      <span>H {hoverBar.high.toFixed(8)}</span>
-                      <span>L {hoverBar.low.toFixed(8)}</span>
-                      <span>C {hoverBar.close.toFixed(8)}</span>
+                      <span>O {formatPrice(hoverBar.open)}</span>
+                      <span>H {formatPrice(hoverBar.high)}</span>
+                      <span>L {formatPrice(hoverBar.low)}</span>
+                      <span>C {formatPrice(hoverBar.close)}</span>
                     </>
                   ) : summary.last ? (
                     <>
-                      <span>O {summary.last.open.toFixed(8)}</span>
-                      <span>H {summary.last.high.toFixed(8)}</span>
-                      <span>L {summary.last.low.toFixed(8)}</span>
-                      <span>C {summary.last.close.toFixed(8)}</span>
+                      <span>O {formatPrice(summary.last.open)}</span>
+                      <span>H {formatPrice(summary.last.high)}</span>
+                      <span>L {formatPrice(summary.last.low)}</span>
+                      <span>C {formatPrice(summary.last.close)}</span>
                     </>
                   ) : (
                     <span>Loading OHLC...</span>
@@ -185,17 +205,8 @@ export default function TokenPage() {
                       {(((summary.last.close - summary.prevClose) / summary.prevClose) * 100).toFixed(2)}%
                     </span>
                   )}
-                  <span>
-                    Vol{" "}
-                    {summary.volumeSum
-                      ? summary.volumeSum.toLocaleString(undefined, { maximumFractionDigits: 2 })
-                      : "--"}
-                  </span>
+                  <span>Vol {formatVolume(summary.volumeSum)}</span>
                 </div>
-              </div>
-
-              <div className="pointer-events-none absolute right-4 top-4 text-right text-[12px] font-mono text-white">
-                {summary.last ? summary.last.close.toFixed(8) : ""}
               </div>
 
               <div className="pointer-events-auto absolute left-4 right-4 bottom-3 flex items-center justify-between">
@@ -253,7 +264,7 @@ export default function TokenPage() {
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-2 top-20 flex flex-col gap-1.5 rounded-md border border-primary/20 bg-black/60 p-2 text-primary/70">
+              <div className="pointer-events-auto absolute left-2 top-16 flex flex-col gap-1.5 rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70">
                 {[
                   Crosshair,
                   LineChart,
