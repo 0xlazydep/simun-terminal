@@ -127,7 +127,7 @@ const HISTORY_RETENTION = 10 * 60 * 1000;
 const CACHE_TTL = 3 * 1000;
 const MIN_VOLUME_SPIKE = 0.3;
 const MAX_MARKET_CAP = 100000;
-const MAX_SCAN_RESULTS = 1000;
+const MAX_SCAN_RESULTS = 200;
 const MAX_RESULTS = 50;
 
 function mergeSeen(quote: QuoteFilter, pairs: DexPair[]) {
