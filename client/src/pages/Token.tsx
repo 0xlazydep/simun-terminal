@@ -134,6 +134,13 @@ export default function TokenPage() {
     return value.toFixed(2);
   };
 
+  const formatUsd = (value?: number | string) => {
+    if (value == null) return "--";
+    const num = Number(value);
+    if (Number.isNaN(num)) return "--";
+    return `$${num.toFixed(8)}`;
+  };
+
   const formatAge = (seconds: number) => {
     if (!Number.isFinite(seconds) || seconds < 0) return "--";
     if (seconds < 60) return `${Math.floor(seconds)}s`;
@@ -492,7 +499,7 @@ export default function TokenPage() {
                       <span>
                         {trade.trader ? `${trade.trader.slice(0, 6)}...${trade.trader.slice(-4)}` : "--"}
                       </span>
-                      <span>{trade.priceUsd != null ? `$${trade.priceUsd.toFixed(8)}` : "--"}</span>
+                      <span>{formatUsd(trade.priceUsd)}</span>
                       <span>{trade.tracked == null ? "--" : trade.tracked ? "ON" : "OFF"}</span>
                     </div>
                   ))}
@@ -608,7 +615,7 @@ export default function TokenPage() {
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
                 <span>Token Value</span>
-                <span className="text-white">{stats?.priceUSD ? `$${stats.priceUSD.toFixed(8)}` : "--"}</span>
+                <span className="text-white">{formatUsd(stats?.priceUSD)}</span>
               </div>
               <div className="flex items-center justify-between text-[10px] font-mono text-primary/60">
                 <span>Market Cap</span>
