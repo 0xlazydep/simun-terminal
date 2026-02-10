@@ -81,6 +81,9 @@ export default function TokenPage() {
   const [percentScale, setPercentScale] = useState(false);
   const [logScale, setLogScale] = useState(false);
   const [autoScale, setAutoScale] = useState(true);
+  const [crosshairVisible, setCrosshairVisible] = useState(true);
+  const [zoomSignal, setZoomSignal] = useState(0);
+  const [resetSignal, setResetSignal] = useState(0);
 
   const formatPrice = (value?: number) => {
     if (value == null || Number.isNaN(value)) return "--";
@@ -165,20 +168,20 @@ export default function TokenPage() {
                 logScale={logScale}
                 percentScale={percentScale}
                 autoScale={autoScale}
+                crosshairVisible={crosshairVisible}
+                zoomSignal={zoomSignal}
+                resetSignal={resetSignal}
                 onHover={setHoverBar}
                 onSummary={setSummary}
               />
 
-              <div className="pointer-events-none absolute left-0 right-0 top-0 px-4 py-2 bg-black/50 border-b border-primary/20">
+              <div className="pointer-events-none absolute left-0 right-0 top-0 z-10 px-4 py-2 bg-black/60 border-b border-primary/20">
                 <div className="flex items-center justify-between text-[11px] font-mono text-white/80">
                   <div className="flex items-center gap-2">
                     <span className="text-primary/80">
                       {stats?.token?.info?.name || "TOKEN"} / {stats?.token?.info?.symbol || "BASE"}
                     </span>
                     <span className="text-[10px] text-primary/50">on Base · {timeframe.label}</span>
-                  </div>
-                  <div className="text-right text-[12px] font-mono text-white">
-                    {formatPrice(hoverBar?.close ?? summary.last?.close)}
                   </div>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] font-mono text-primary/70">
@@ -209,24 +212,24 @@ export default function TokenPage() {
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-4 right-4 bottom-3 flex items-center justify-between">
-                <div className="flex flex-wrap items-center gap-1.5 bg-black/50 px-2 py-1 rounded border border-primary/20">
+              <div className="pointer-events-auto absolute left-4 right-4 bottom-0 z-10 flex items-center justify-between translate-y-0.5">
+                <div className="flex flex-wrap items-center gap-1.5 bg-black/60 px-2 py-1 rounded">
                   {timeframes.map((frame) => (
                     <button
                       key={frame.label}
                       type="button"
                       onClick={() => setTimeframe(frame)}
-                      className={`px-2 py-1 text-[9px] font-mono border ${
+                      className={`px-2 py-1 text-[9px] font-mono ${
                         frame.label === timeframe.label
-                          ? "border-primary text-primary bg-primary/10"
-                          : "border-primary/20 text-primary/60 hover:border-primary/60"
+                          ? "text-primary bg-primary/10"
+                          : "text-primary/60 hover:text-primary"
                       }`}
                     >
                       {frame.label}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 text-[9px] font-mono text-primary/70 bg-black/50 px-2 py-1 rounded border border-primary/20">
+                <div className="flex items-center gap-2 text-[9px] font-mono text-primary/70 bg-black/60 px-2 py-1 rounded">
                   <span className="text-primary/50 whitespace-nowrap">
                     {hoverBar
                       ? new Date(hoverBar.time * 1000).toLocaleString()
@@ -240,7 +243,7 @@ export default function TokenPage() {
                       setPercentScale((v) => !v);
                       if (!percentScale) setLogScale(false);
                     }}
-                    className={`px-2 py-1 border ${percentScale ? "border-primary text-primary" : "border-primary/30"}`}
+                    className={`px-2 py-1 ${percentScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     %
                   </button>
@@ -250,41 +253,91 @@ export default function TokenPage() {
                       setLogScale((v) => !v);
                       if (!logScale) setPercentScale(false);
                     }}
-                    className={`px-2 py-1 border ${logScale ? "border-primary text-primary" : "border-primary/30"}`}
+                    className={`px-2 py-1 ${logScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     log
                   </button>
                   <button
                     type="button"
                     onClick={() => setAutoScale((v) => !v)}
-                    className={`px-2 py-1 border ${autoScale ? "border-primary text-primary" : "border-primary/30"}`}
+                    className={`px-2 py-1 ${autoScale ? "text-primary bg-primary/10" : "text-primary/60 hover:text-primary"}`}
                   >
                     auto
                   </button>
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-2 top-16 flex flex-col gap-1.5 rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70">
-                {[
-                  Crosshair,
-                  LineChart,
-                  Sliders,
-                  Network,
-                  MousePointer,
-                  Pencil,
-                  Type,
-                  Smile,
-                  Ruler,
-                  ZoomIn,
-                  Magnet,
-                  Lock,
-                  Eye,
-                  ChevronDown,
-                ].map((Icon, idx) => (
-                  <button key={idx} className="p-1.5 border border-primary/20 hover:border-primary/60">
-                    <Icon className="h-4 w-4" />
-                  </button>
-                ))}
+              <div className="pointer-events-auto absolute left-1 top-16 z-10 flex max-h-[70%] flex-col gap-1.5 overflow-y-auto rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setCrosshairVisible((v) => !v)}
+                  className={`p-1.5 border ${crosshairVisible ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                >
+                  <Crosshair className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setResetSignal((v) => v + 1)}
+                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                >
+                  <LineChart className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAutoScale((v) => !v)}
+                  className={`p-1.5 border ${autoScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                >
+                  <Sliders className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPercentScale((v) => !v)}
+                  className={`p-1.5 border ${percentScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                >
+                  <Network className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogScale((v) => !v)}
+                  className={`p-1.5 border ${logScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                >
+                  <MousePointer className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomSignal((v) => v + 1)}
+                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setZoomSignal((v) => v - 1)}
+                  className="p-1.5 border border-primary/20 hover:border-primary/60"
+                >
+                  <Ruler className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Type className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Smile className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Magnet className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Lock className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <Eye className="h-4 w-4" />
+                </button>
+                <button className="p-1.5 border border-primary/20 opacity-40">
+                  <ChevronDown className="h-4 w-4" />
+                </button>
               </div>
             </div>
           </div>

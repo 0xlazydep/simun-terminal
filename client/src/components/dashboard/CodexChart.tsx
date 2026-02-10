@@ -8,6 +8,9 @@ type CodexChartProps = {
   logScale?: boolean;
   percentScale?: boolean;
   autoScale?: boolean;
+  crosshairVisible?: boolean;
+  zoomSignal?: number;
+  resetSignal?: number;
   onHover?: (bar: {
     time: number;
     open: number;
@@ -41,6 +44,9 @@ export function CodexChart({
   autoScale = true,
   onHover,
   onSummary,
+  crosshairVisible = true,
+  zoomSignal,
+  resetSignal,
 }: CodexChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -49,6 +55,7 @@ export function CodexChart({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastClose, setLastClose] = useState<number | null>(null);
+  const [barSpacing, setBarSpacing] = useState(4);
 
   const resolutionSeconds = useMemo(
     () => ({
@@ -94,15 +101,16 @@ export function CodexChart({
         horzLines: { color: "rgba(0, 255, 128, 0.08)" },
       },
       crosshair: {
-        mode: 0,
+        mode: crosshairVisible ? 0 : 2,
       },
       rightPriceScale: {
         borderColor: "rgba(0, 255, 128, 0.2)",
+        scaleMargins: { top: 0.18, bottom: 0.24 },
       },
       timeScale: {
         borderColor: "rgba(0, 255, 128, 0.2)",
-        rightOffset: 4,
-        barSpacing: 8,
+        rightOffset: 12,
+        barSpacing: 4,
         timeVisible: true,
         secondsVisible: resolution.endsWith("S"),
       },
@@ -122,6 +130,9 @@ export function CodexChart({
       priceLineColor: "rgba(0, 255, 128, 0.6)",
       priceLineWidth: 1,
     });
+    candles.priceScale().applyOptions({
+      scaleMargins: { top: 0.18, bottom: 0.28 },
+    });
 
     const volume = chart.addHistogramSeries({
       color: "rgba(0, 255, 128, 0.35)",
@@ -129,7 +140,7 @@ export function CodexChart({
       priceScaleId: "volume",
     });
     volume.priceScale().applyOptions({
-      scaleMargins: { top: 0.6, bottom: 0 },
+      scaleMargins: { top: 0.55, bottom: 0 },
     });
 
     chartRef.current = chart;
@@ -195,11 +206,34 @@ export function CodexChart({
 
   useEffect(() => {
     if (!chartRef.current) return;
+    chartRef.current.applyOptions({
+      crosshair: {
+        mode: crosshairVisible ? 0 : 2,
+      },
+    });
+  }, [crosshairVisible]);
+
+  useEffect(() => {
+    if (!chartRef.current || !zoomSignal) return;
+    setBarSpacing((current) => Math.max(2, Math.min(20, current + zoomSignal)));
+  }, [zoomSignal]);
+
+  useEffect(() => {
+    if (!chartRef.current || !resetSignal) return;
+    chartRef.current.timeScale().fitContent();
+  }, [resetSignal]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
     chartRef.current.timeScale().applyOptions({
       secondsVisible: resolution.endsWith("S"),
       timeVisible: true,
-      barSpacing: resolution.endsWith("S") ? 6 : 8,
+      barSpacing,
     });
+  }, [resolution, barSpacing]);
+
+  useEffect(() => {
+    setBarSpacing(resolution.endsWith("S") ? 6 : 8);
   }, [resolution]);
 
   useEffect(() => {
@@ -270,7 +304,7 @@ export function CodexChart({
 
         if (last) {
           const secondsPerBar = resolutionSeconds[resolution] ?? 300;
-          const visibleBars = Math.min(Math.max(candles.length, 60), 300);
+          const visibleBars = Math.min(Math.max(candles.length, 200), 400);
           const from = last.time - secondsPerBar * (visibleBars - 1);
           chartRef.current?.timeScale().setVisibleRange({ from, to: last.time });
         } else {
@@ -309,9 +343,9 @@ export function CodexChart({
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="absolute inset-0" />
+      <div ref={containerRef} className="absolute inset-0 z-0" />
       {(loading || error) && (
-        <div className="absolute inset-0 flex items-center justify-center text-[10px] font-mono text-primary/60 bg-black/40">
+        <div className="absolute inset-0 z-10 flex items-center justify-center text-[10px] font-mono text-primary/60 bg-black/40">
           {error ? "Chart data unavailable" : "Loading chart..."}
         </div>
       )}
