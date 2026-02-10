@@ -108,22 +108,22 @@ export function Navbar({ onSelectPair }: NavbarProps) {
 
   return (
     <nav className="border-b border-primary/30 bg-background/80 backdrop-blur-md sticky top-0 z-50">
-      <div className="w-full px-2 md:px-3 h-16 flex items-center justify-between">
+      <div className="w-full px-2 md:px-3 h-12 flex items-center justify-between">
         {/* Logo Area */}
-        <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 border border-primary/50 flex items-center justify-center bg-primary/10 group">
+        <div className="flex items-center gap-2.5">
+            <div className="relative w-8 h-8 border border-primary/50 flex items-center justify-center bg-primary/10 group">
              <img
                src="/favicon.png"
                alt="Simun Logo"
-               className="w-8 h-8 logo-green drop-shadow-[0_0_10px_rgba(0,255,128,0.8)]"
+               className="w-7 h-7 logo-green drop-shadow-[0_0_10px_rgba(0,255,128,0.8)]"
              />
              <div className="absolute inset-0 bg-primary/20 scale-0 group-hover:scale-100 transition-transform duration-300" />
           </div>
           <div className="flex flex-col">
-            <h1 className="font-orbitron text-xl font-bold tracking-widest text-primary glitch-text" data-text="SIMUN TERMINAL">
+            <h1 className="font-orbitron text-lg font-bold tracking-widest text-primary glitch-text" data-text="SIMUN TERMINAL">
               SIMUN TERMINAL
             </h1>
-            <span className="text-[10px] text-primary/70 font-mono tracking-[0.2em] uppercase">
+            <span className="text-[8px] text-primary/70 font-mono tracking-[0.2em] uppercase">
               System Online v.2.4
             </span>
           </div>
@@ -134,8 +134,8 @@ export function Navbar({ onSelectPair }: NavbarProps) {
           <div
             ref={searchWrapRef}
             className={cn(
-              "flex items-center border border-primary/40 bg-background/60 backdrop-blur px-1 h-9 transition-all duration-300 ease-out overflow-hidden",
-              searchOpen ? "w-56" : "w-9 justify-center"
+              "flex items-center border border-primary/40 bg-background/60 backdrop-blur px-1 h-7 transition-all duration-300 ease-out overflow-hidden",
+              searchOpen ? "w-48" : "w-7 justify-center"
             )}
           >
             <button
@@ -150,7 +150,7 @@ export function Navbar({ onSelectPair }: NavbarProps) {
               aria-label="Toggle search"
               aria-expanded={searchOpen}
             >
-              <Search className="w-4 h-4" />
+              <Search className="w-3.5 h-3.5" />
             </button>
             <input
               ref={searchRef}
@@ -162,7 +162,7 @@ export function Navbar({ onSelectPair }: NavbarProps) {
               }}
               placeholder="Search token..."
               className={cn(
-                "bg-transparent outline-none text-xs font-mono text-primary/90 placeholder:text-primary/40 transition-all duration-300",
+                "bg-transparent outline-none text-[11px] font-mono text-primary/90 placeholder:text-primary/40 transition-all duration-300",
                 searchOpen ? "w-full opacity-100 ml-2" : "w-0 opacity-0 ml-0 pointer-events-none"
               )}
             />
@@ -171,7 +171,7 @@ export function Navbar({ onSelectPair }: NavbarProps) {
                 type="button"
                 onClick={runSearch}
                 disabled={searching}
-                className="ml-1 px-2 py-1 text-[9px] font-mono uppercase tracking-wider border border-primary/30 text-primary/80 hover:border-primary/60 disabled:opacity-50"
+                className="ml-1 px-2 py-0.5 text-[8px] font-mono uppercase tracking-wider border border-primary/30 text-primary/80 hover:border-primary/60 disabled:opacity-50"
               >
                 {searching ? "..." : "Go"}
               </button>
@@ -181,8 +181,6 @@ export function Navbar({ onSelectPair }: NavbarProps) {
           <div
             ref={walletWrapRef}
             className="relative"
-            onMouseEnter={() => setWalletOpen(true)}
-            onMouseLeave={() => setWalletOpen(false)}
           >
             <Button
               variant="outline"
@@ -193,12 +191,12 @@ export function Navbar({ onSelectPair }: NavbarProps) {
                 }
                 setWalletOpen((open) => !open);
               }}
-              className="font-orbitron border-primary text-primary hover:bg-primary hover:text-black transition-all duration-300 uppercase tracking-wider h-4 px-2 text-[8px]"
+              className="font-orbitron border-primary text-primary hover:bg-primary hover:text-black transition-all duration-300 uppercase tracking-wider h-7 px-3.5 text-[9px]"
             >
               {address ? `[ ${address.slice(0, 6)}...${address.slice(-4)} ]` : "[ Connect Wallet ]"}
             </Button>
             {walletOpen && (
-              <div className="absolute right-0 mt-2 w-48 border border-primary/30 bg-background/95 backdrop-blur p-3 text-[10px] font-mono text-primary/80 shadow-xl">
+              <div className="absolute right-0 mt-2 w-48 border border-primary/30 bg-background/95 backdrop-blur p-3 text-[10px] font-mono text-primary/80 shadow-xl panel-rise">
                 <div className="flex items-center justify-between">
                   <span className="text-primary/60">BALANCE</span>
                   <span className="text-white">{balance} ETH</span>

@@ -142,6 +142,21 @@ body::before {
   transform: translateY(-1px);
 }
 
+.toolbar-panel {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.96);
+  transition: max-height 220ms ease, opacity 180ms ease, transform 220ms ease;
+  pointer-events: none;
+}
+
+.toolbar-panel--open {
+  max-height: 320px;
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
 .chart-watermark {
   font-family: var(--font-pixel);
   font-size: clamp(60px, 10vw, 95px);

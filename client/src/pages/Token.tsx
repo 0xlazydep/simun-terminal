@@ -84,6 +84,7 @@ export default function TokenPage() {
   const [crosshairVisible, setCrosshairVisible] = useState(true);
   const [zoomSignal, setZoomSignal] = useState(0);
   const [resetSignal, setResetSignal] = useState(0);
+  const [toolbarOpen, setToolbarOpen] = useState(false);
 
   const formatPrice = (value?: number) => {
     if (value == null || Number.isNaN(value)) return "--";
@@ -260,77 +261,92 @@ export default function TokenPage() {
                 </div>
               </div>
 
-              <div className="pointer-events-auto absolute left-1 top-16 z-10 flex max-h-[70%] flex-col gap-1.5 overflow-y-auto rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70 no-scrollbar panel-rise delay-3">
+              <div className="pointer-events-auto absolute left-1 top-16 z-10 flex flex-col gap-2 panel-rise delay-3">
                 <button
                   type="button"
-                  onClick={() => setCrosshairVisible((v) => !v)}
-                  className={`p-1.5 border smooth-btn ${crosshairVisible ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
-                >
-                  <Crosshair className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setResetSignal((v) => v + 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
-                >
-                  <LineChart className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAutoScale((v) => !v)}
-                  className={`p-1.5 border smooth-btn ${autoScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                  onClick={() => setToolbarOpen((v) => !v)}
+                  className={`p-2 border smooth-btn ${toolbarOpen ? "border-primary text-primary" : "border-primary/20 text-primary/70"}`}
+                  aria-label="Toggle toolbar"
                 >
                   <Sliders className="h-4 w-4" />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setPercentScale((v) => !v)}
-                  className={`p-1.5 border smooth-btn ${percentScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                <div
+                  className={`toolbar-panel overflow-hidden ${toolbarOpen ? "toolbar-panel--open" : ""}`}
+                  aria-hidden={!toolbarOpen}
                 >
-                  <Network className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLogScale((v) => !v)}
-                  className={`p-1.5 border smooth-btn ${logScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
-                >
-                  <MousePointer className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomSignal((v) => v + 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
-                >
-                  <ZoomIn className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setZoomSignal((v) => v - 1)}
-                  className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
-                >
-                  <Ruler className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Type className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Smile className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Magnet className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Lock className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <Eye className="h-4 w-4" />
-                </button>
-                <button className="p-1.5 border border-primary/20 opacity-40">
-                  <ChevronDown className="h-4 w-4" />
-                </button>
+                  <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto rounded-md border border-primary/20 bg-black/70 p-2 text-primary/70 no-scrollbar">
+                    <button
+                      type="button"
+                      onClick={() => setCrosshairVisible((v) => !v)}
+                      className={`p-1.5 border smooth-btn ${crosshairVisible ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                    >
+                      <Crosshair className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setResetSignal((v) => v + 1)}
+                      className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
+                    >
+                      <LineChart className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAutoScale((v) => !v)}
+                      className={`p-1.5 border smooth-btn ${autoScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                    >
+                      <Sliders className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPercentScale((v) => !v)}
+                      className={`p-1.5 border smooth-btn ${percentScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                    >
+                      <Network className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLogScale((v) => !v)}
+                      className={`p-1.5 border smooth-btn ${logScale ? "border-primary text-primary" : "border-primary/20 text-primary/60"}`}
+                    >
+                      <MousePointer className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoomSignal((v) => v + 1)}
+                      className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
+                    >
+                      <ZoomIn className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setZoomSignal((v) => v - 1)}
+                      className="p-1.5 border border-primary/20 hover:border-primary/60 smooth-btn"
+                    >
+                      <Ruler className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Type className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Smile className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Magnet className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Lock className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button className="p-1.5 border border-primary/20 opacity-40">
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
