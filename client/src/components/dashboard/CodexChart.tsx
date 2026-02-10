@@ -1,10 +1,26 @@
-import { createChart, type IChartApi, type ISeriesApi } from "lightweight-charts";
+import { PriceScaleMode, createChart, type IChartApi, type ISeriesApi } from "lightweight-charts";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type CodexChartProps = {
   address: string;
   resolution: string;
   rangeSeconds: number;
+  logScale?: boolean;
+  percentScale?: boolean;
+  autoScale?: boolean;
+  onHover?: (bar: {
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume?: number;
+  } | null) => void;
+  onSummary?: (summary: {
+    last?: { time: number; open: number; high: number; low: number; close: number; volume?: number };
+    prevClose?: number;
+    volumeSum?: number;
+  }) => void;
 };
 
 type BarResponse = {
@@ -16,7 +32,16 @@ type BarResponse = {
   volume?: Array<number | null>;
 };
 
-export function CodexChart({ address, resolution, rangeSeconds }: CodexChartProps) {
+export function CodexChart({
+  address,
+  resolution,
+  rangeSeconds,
+  logScale,
+  percentScale,
+  autoScale = true,
+  onHover,
+  onSummary,
+}: CodexChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const candleRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
@@ -110,14 +135,51 @@ export function CodexChart({ address, resolution, rangeSeconds }: CodexChartProp
     const observer = new ResizeObserver(resize);
     observer.observe(containerRef.current);
 
+    const handleCrosshair = (param: any) => {
+      if (!param?.time || !param.seriesData) {
+        onHover?.(null);
+        return;
+      }
+      const candle = param.seriesData.get(candles);
+      if (!candle) {
+        onHover?.(null);
+        return;
+      }
+      const vol = param.seriesData.get(volume);
+      onHover?.({
+        time: typeof param.time === "number" ? param.time : Math.floor(new Date(param.time.year, param.time.month - 1, param.time.day).getTime() / 1000),
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: vol?.value,
+      });
+    };
+    chart.subscribeCrosshairMove(handleCrosshair);
+
     return () => {
+      chart.unsubscribeCrosshairMove(handleCrosshair);
       observer.disconnect();
       chart.remove();
       chartRef.current = null;
       candleRef.current = null;
       volumeRef.current = null;
     };
-  }, []);
+  }, [onHover]);
+
+  useEffect(() => {
+    if (!chartRef.current) return;
+    let mode = PriceScaleMode.Normal;
+    if (percentScale) {
+      mode = PriceScaleMode.Percentage;
+    } else if (logScale) {
+      mode = PriceScaleMode.Logarithmic;
+    }
+    chartRef.current.priceScale("right").applyOptions({
+      mode,
+      autoScale: autoScale ?? true,
+    });
+  }, [logScale, percentScale, autoScale]);
 
   useEffect(() => {
     if (!address) return;
@@ -175,6 +237,15 @@ export function CodexChart({ address, resolution, rangeSeconds }: CodexChartProp
         }
         candleRef.current?.setData(candles);
         volumeRef.current?.setData(volumes);
+        const last = candles[candles.length - 1];
+        const prev = candles[candles.length - 2];
+        const volumeSum = volumes.reduce((acc, bar) => acc + (bar.value ?? 0), 0);
+        onSummary?.({
+          last,
+          prevClose: prev?.close,
+          volumeSum,
+        });
+
         chartRef.current?.timeScale().fitContent();
       } catch (err) {
         if (!active) return;

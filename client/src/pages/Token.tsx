@@ -4,6 +4,22 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { CodexChart } from "@/components/dashboard/CodexChart";
+import {
+  Crosshair,
+  LineChart,
+  Sliders,
+  Network,
+  MousePointer,
+  Pencil,
+  Type,
+  Smile,
+  Ruler,
+  ZoomIn,
+  Magnet,
+  Lock,
+  Eye,
+  ChevronDown,
+} from "lucide-react";
 
 function parseType(search: string) {
   const params = new URLSearchParams(search);
@@ -26,6 +42,7 @@ export default function TokenPage() {
     buyCount5m?: number;
     sellCount5m?: number;
     change5m?: number;
+    token?: { info?: { name?: string; symbol?: string } };
   } | null>(null);
   const { address: walletAddress } = useWallet();
   const [amount, setAmount] = useState("");
@@ -48,6 +65,22 @@ export default function TokenPage() {
     [],
   );
   const [timeframe, setTimeframe] = useState(timeframes[3]);
+  const [hoverBar, setHoverBar] = useState<{
+    time: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume?: number;
+  } | null>(null);
+  const [summary, setSummary] = useState<{
+    last?: { time: number; open: number; high: number; low: number; close: number; volume?: number };
+    prevClose?: number;
+    volumeSum?: number;
+  }>({});
+  const [percentScale, setPercentScale] = useState(false);
+  const [logScale, setLogScale] = useState(false);
+  const [autoScale, setAutoScale] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -109,42 +142,139 @@ export default function TokenPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_360px] gap-4 mb-4 items-stretch">
           <div className="border border-primary/20 bg-primary/5 overflow-hidden min-h-[360px] dex-embed flex flex-col">
-            <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-primary/20 bg-black/30">
-              {timeframes.map((frame) => (
-                <button
-                  key={frame.label}
-                  type="button"
-                  onClick={() => setTimeframe(frame)}
-                  className={`px-2 py-1 text-[9px] font-mono border ${
-                    frame.label === timeframe.label
-                      ? "border-primary text-primary bg-primary/10"
-                      : "border-primary/20 text-primary/60 hover:border-primary/60"
-                  }`}
-                >
-                  {frame.label}
-                </button>
-              ))}
-            </div>
-            <div className="flex items-center justify-between px-3 py-2 border-b border-primary/10 text-[10px] font-mono text-primary/70">
-              <div className="flex items-center gap-3">
-                <span>MC {stats?.marketCap ? `$${stats.marketCap.toLocaleString()}` : "--"}</span>
-                <span>VOL 24H {stats?.volume24 ? `$${stats.volume24.toLocaleString()}` : "--"}</span>
-                <span>TXN 24H {stats?.txnCount24 ?? "--"}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span>B:{stats?.buyCount5m ?? "--"}</span>
-                <span>S:{stats?.sellCount5m ?? "--"}</span>
-                <span>
-                  5m {typeof stats?.change5m === "number" ? `${stats.change5m >= 0 ? "+" : ""}${stats.change5m.toFixed(2)}%` : "--"}
-                </span>
-              </div>
-            </div>
-            <div className="flex-1 min-h-[380px]">
+            <div className="relative flex-1 min-h-[380px]">
               <CodexChart
                 address={address}
                 resolution={timeframe.resolution}
                 rangeSeconds={timeframe.rangeSeconds}
+                logScale={logScale}
+                percentScale={percentScale}
+                autoScale={autoScale}
+                onHover={setHoverBar}
+                onSummary={setSummary}
               />
+
+              <div className="pointer-events-none absolute left-4 right-24 top-3 text-[11px] font-mono text-white/80">
+                <div className="flex items-center gap-2">
+                  <span className="text-primary/80">
+                    {stats?.token?.info?.name || "TOKEN"} / {stats?.token?.info?.symbol || "BASE"}
+                  </span>
+                  <span className="text-[10px] text-primary/50">on Base · {timeframe.label}</span>
+                </div>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-primary/70">
+                  {hoverBar ? (
+                    <>
+                      <span>O {hoverBar.open.toFixed(8)}</span>
+                      <span>H {hoverBar.high.toFixed(8)}</span>
+                      <span>L {hoverBar.low.toFixed(8)}</span>
+                      <span>C {hoverBar.close.toFixed(8)}</span>
+                    </>
+                  ) : summary.last ? (
+                    <>
+                      <span>O {summary.last.open.toFixed(8)}</span>
+                      <span>H {summary.last.high.toFixed(8)}</span>
+                      <span>L {summary.last.low.toFixed(8)}</span>
+                      <span>C {summary.last.close.toFixed(8)}</span>
+                    </>
+                  ) : (
+                    <span>Loading OHLC...</span>
+                  )}
+                  {summary.last && summary.prevClose != null && (
+                    <span>
+                      {summary.last.close >= summary.prevClose ? "+" : ""}
+                      {(((summary.last.close - summary.prevClose) / summary.prevClose) * 100).toFixed(2)}%
+                    </span>
+                  )}
+                  <span>
+                    Vol{" "}
+                    {summary.volumeSum
+                      ? summary.volumeSum.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                      : "--"}
+                  </span>
+                </div>
+              </div>
+
+              <div className="pointer-events-none absolute right-4 top-4 text-right text-[12px] font-mono text-white">
+                {summary.last ? summary.last.close.toFixed(8) : ""}
+              </div>
+
+              <div className="pointer-events-auto absolute left-4 right-4 bottom-3 flex items-center justify-between">
+                <div className="flex flex-wrap items-center gap-1.5 bg-black/50 px-2 py-1 rounded border border-primary/20">
+                  {timeframes.map((frame) => (
+                    <button
+                      key={frame.label}
+                      type="button"
+                      onClick={() => setTimeframe(frame)}
+                      className={`px-2 py-1 text-[9px] font-mono border ${
+                        frame.label === timeframe.label
+                          ? "border-primary text-primary bg-primary/10"
+                          : "border-primary/20 text-primary/60 hover:border-primary/60"
+                      }`}
+                    >
+                      {frame.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-[9px] font-mono text-primary/70 bg-black/50 px-2 py-1 rounded border border-primary/20">
+                  <span className="text-primary/50 whitespace-nowrap">
+                    {hoverBar
+                      ? new Date(hoverBar.time * 1000).toLocaleString()
+                      : summary.last
+                        ? new Date(summary.last.time * 1000).toLocaleString()
+                        : "--"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPercentScale((v) => !v);
+                      if (!percentScale) setLogScale(false);
+                    }}
+                    className={`px-2 py-1 border ${percentScale ? "border-primary text-primary" : "border-primary/30"}`}
+                  >
+                    %
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLogScale((v) => !v);
+                      if (!logScale) setPercentScale(false);
+                    }}
+                    className={`px-2 py-1 border ${logScale ? "border-primary text-primary" : "border-primary/30"}`}
+                  >
+                    log
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAutoScale((v) => !v)}
+                    className={`px-2 py-1 border ${autoScale ? "border-primary text-primary" : "border-primary/30"}`}
+                  >
+                    auto
+                  </button>
+                </div>
+              </div>
+
+              <div className="pointer-events-auto absolute left-2 top-20 flex flex-col gap-1.5 rounded-md border border-primary/20 bg-black/60 p-2 text-primary/70">
+                {[
+                  Crosshair,
+                  LineChart,
+                  Sliders,
+                  Network,
+                  MousePointer,
+                  Pencil,
+                  Type,
+                  Smile,
+                  Ruler,
+                  ZoomIn,
+                  Magnet,
+                  Lock,
+                  Eye,
+                  ChevronDown,
+                ].map((Icon, idx) => (
+                  <button key={idx} className="p-1.5 border border-primary/20 hover:border-primary/60">
+                    <Icon className="h-4 w-4" />
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
